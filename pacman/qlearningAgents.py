@@ -43,7 +43,7 @@ class QLearningAgent(ReinforcementAgent):
         ReinforcementAgent.__init__(self, **args)
 
         "*** YOUR CODE HERE ***"
-        self.Qvalues = {}
+        self.Qvalues = util.Counter()
         
 
     def getQValue(self, state, action):
@@ -54,8 +54,6 @@ class QLearningAgent(ReinforcementAgent):
         """
         "*** YOUR CODE HERE ***"
         if state not in self.Qvalues:
-            return 0
-        if action not in self.Qvalues[state]:
             return 0
         return self.Qvalues[state][action]
 
@@ -124,7 +122,7 @@ class QLearningAgent(ReinforcementAgent):
         """
         "*** YOUR CODE HERE ***"
         if state not in self.Qvalues:
-            self.Qvalues[state] = {}
+            self.Qvalues[state] = util.Counter()
         self.Qvalues[state][action] = reward + self.discount * self.computeValueFromQValues(nextState)
 
     def getPolicy(self, state):
@@ -188,22 +186,17 @@ class ApproximateQAgent(PacmanQAgent):
           where * is the dotProduct operator
         """
         "*** YOUR CODE HERE ***"
-        value = 0
-        for i in range(len(self.weights)):
-            value += self.featExtractor[i](state, action) * self.weights[i]
-        return value
+        return self.featExtractor.getFeatures(state, action) * self.weights
 
     def update(self, state, action, nextState, reward):
         """
            Should update your weights based on transition
         """
         "*** YOUR CODE HERE ***"
-        print(type(self.featExtractor))
         diff = reward + self.discount * self.computeValueFromQValues(nextState) - self.getQValue(state, action)
-        vec = util.Counter()
-        for i in self.featExtractor.getFeatures(state, action):
-            vec[i] = diff * self.alpha
-        self.weights += vec * self.featExtractor.getFeatures(state, action)
+        features = self.featExtractor.getFeatures(state, action)
+        for key in features:
+            self.weights[key] += features[key] * diff * self.alpha
 
     def final(self, state):
         "Called at the end of each game."
