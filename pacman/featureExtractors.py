@@ -111,9 +111,10 @@ class NewExtractor(FeatureExtractor):
         # extract the grid of food and wall locations and get the ghost locations
         food = state.getFood()
         walls = state.getWalls()
-        ghosts = state.getGhostPositions()
-        capsules = state.getCapsules()
         ghostStates = state.getGhostStates()
+        capsules = state.getCapsules()
+        scaredThreshold = 2
+        safeGhostPositions = (g.getPosition() for g in ghostStates if g.scaredTimer >= scaredThreshold)
 
         features = util.Counter()
 
@@ -124,12 +125,16 @@ class NewExtractor(FeatureExtractor):
         dx, dy = Actions.directionToVector(action)
         next_x, next_y = int(x + dx), int(y + dy)
 
-        # count the number of ghosts 1-step away that are not scared / almost not scared
-        features["#-of-ghosts-1-step-away"] = sum((next_x, next_y) in Actions.getLegalNeighbors(g.getPosition(), walls) for g in ghostStates if g.scaredTimer < 2)
+        # count the number of ghosts 1-step away that dangerous i.e. not scared / almost not scared
+        features["#-of-ghosts-1-step-away"] = sum((next_x, next_y) in Actions.getLegalNeighbors(g.getPosition(), walls) for g in ghostStates if g.scaredTimer < scaredThreshold)
 
         # If ghosts are near but capsule is also near
         if features["#-of-ghosts-1-step-away"] and (next_x, next_y) in capsules:
             features["eats-capsule"] = features["#-of-ghosts-1-step-away"]
+
+        # If there is no dangerous ghost and eats ghost
+        if not features["#-of-ghosts-1-step-away"] and (next_x, next_y) in safeGhostPositions:
+            features["eats-ghost"] = 2.0
 
         # if there is no danger of ghosts then add the food feature
         if not features["#-of-ghosts-1-step-away"] and food[next_x][next_y]:
