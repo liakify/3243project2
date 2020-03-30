@@ -26,7 +26,17 @@ class Sudoku(object):
     def get_unassigned(self):
         return [(i,j) for i in range(9) for j in range(9) if self.puzzle[i][j] == 0]
 
-    def solve(self):
+    def solve(self, flag):
+        if flag:
+            inf = self.inference(None)
+           
+            if inf != self.FAILURE:
+                new_sudoku = Sudoku(inf[0], domain_values=inf[1])
+                result = new_sudoku.solve(False)
+                         
+                if result != self.FAILURE:
+                    return result
+
         unassigned = self.get_unassigned()
         if len(unassigned) == 0:
             return self.ans
@@ -39,10 +49,10 @@ class Sudoku(object):
                 
             self.ans[var_row][var_col] = val
             self.domain_values[var_row][var_col] = [val]
-            inf = self.inference()
+            inf = self.inference(var)
             if inf != self.FAILURE:
                 new_sudoku = Sudoku(inf[0], domain_values=inf[1])
-                result = new_sudoku.solve()
+                result = new_sudoku.solve(False)
 
                 if result != self.FAILURE:
                     return result
@@ -87,7 +97,7 @@ class Sudoku(object):
                     return False
         return True
     
-    def inference(self):
+    def inference(self, cell):
         # Do inference here such as AC-3
         # Will need to make a deep copy of the domain values while doing inference
         # so that we do not lose the information of the domain values of the
@@ -96,7 +106,15 @@ class Sudoku(object):
         # domains or the reduced domains
         
         domain_vals = copy.deepcopy(self.domain_values) 
-        queue = self.get_arcs()
+        
+        if cell == None:
+            queue = self.get_arcs()
+        else:
+            row, col = cell
+            queue = set()
+      
+            for x in self.get_neighbours(row, col, True):
+                queue.add((x, cell))
         
         while len(queue) != 0:
             (Xi, Xj) = queue.pop()
@@ -106,7 +124,7 @@ class Sudoku(object):
                 if (len(domain_vals[row_i][col_i]) == 0):
                     return self.FAILURE
                 
-                for Xk in self.get_neighbours(row_i, col_i):
+                for Xk in self.get_neighbours(row_i, col_i, False):
                     if Xk != Xj:                    
                         queue.add((Xk, Xi))
         
@@ -118,31 +136,31 @@ class Sudoku(object):
 
         for row in range(9):
             for col in range(9):
-                 for (x, y) in self.get_neighbours(row, col):
+                 for (x, y) in self.get_neighbours(row, col, False):
                       arcs.add(((row, col), (x, y)))
     
         return arcs    
 
     # Get all neighbours of a particular cell in the CSP
-    def get_neighbours(self, row, col):
+    def get_neighbours(self, row, col, signal):
         square_top_row = (row // 3) * 3
         square_left_most_col = (col // 3) * 3
         result = []        
 
         # Get neighbours in the same row
         for i in range(9):
-            if i != col:
+            if i != col and (not signal or (signal and self.ans[row][i] == 0)):
                  result.append((row, i))
 
         # Get neighbours in the same col
         for j in range(9):
-            if j != row:
+            if j != row and (not signal or (signal and self.ans[j][col] == 0)):
                 result.append((j, col))
 
         # Get neighbours in the same 3x3 grid
         for i in range(square_top_row, square_top_row + 3):
             for j in range(square_left_most_col, square_left_most_col + 3):
-                if (row, col) != (i, j):
+                if (row, col) != (i, j) and (not signal or (signal and self.ans[i][j] == 0)):
                     result.append((i, j))
         
         return result
@@ -210,7 +228,7 @@ if __name__ == "__main__":
                     j = 0
 
     sudoku = Sudoku(puzzle)
-    ans = sudoku.solve()
+    ans = sudoku.solve(True)
     
     print(time.time() - start_time)
 
