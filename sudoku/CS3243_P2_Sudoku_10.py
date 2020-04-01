@@ -26,13 +26,13 @@ class Sudoku(object):
     def get_unassigned(self):
         return [(i,j) for i in range(9) for j in range(9) if self.puzzle[i][j] == 0]
 
-    def solve(self, flag):
+    def solve(self, flag=True):
         if flag:
             inf = self.inference(None)
            
             if inf != self.FAILURE:
                 new_sudoku = Sudoku(inf[0], domain_values=inf[1])
-                result = new_sudoku.solve(False)
+                result = new_sudoku.solve(flag=False)
                          
                 if result != self.FAILURE:
                     return result
@@ -228,7 +228,7 @@ if __name__ == "__main__":
                     j = 0
 
     sudoku = Sudoku(puzzle)
-    ans = sudoku.solve(True)
+    ans = sudoku.solve()
     
     print(time.time() - start_time)
 
