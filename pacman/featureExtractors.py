@@ -292,24 +292,24 @@ class NewExtractor(FeatureExtractor):
 
         # count the number of ghosts 1-step away that dangerous
         features["#-of-ghosts-1-step-away"] = sum( next_pos in Actions.getLegalNeighbors(g.getPosition(), walls) for g in ghostStates if g.scaredTimer <= 1)
-
-        dist = closestFood(next_pos, food, walls)
-        if dist is not None:
-            features["closest-food"] = float(dist) / (walls.width * walls.height)
         
         if not features["#-of-ghosts-1-step-away"]:
             # if there is no danger of ghosts then add the food feature
+            dist = closestFood(next_pos, food, walls)
+            if dist is not None:
+                features["closest-food"] = float(dist) / (walls.width * walls.height)
             if food[next_x][next_y]:
                 features["eats-food"] = 1.0
             
             nearestScaredGhostDist, nearestScaredGhost = self.nearestEdibleScaredGhost(next_pos, state, walls)
-            if nearestScaredGhostDist is not None:
-                features["closest-scared-ghost"] = 1.0 - float(nearestScaredGhostDist) / (walls.width * walls.height)
-            
-            # if there is no danger of ghosts then add the food feature
-            if next_pos in safeGhostPositions:
-                distFromRespawn = nearestScaredGhost.start.getPosition()
-                features["eats-ghost"] = 1.0
+            if nearestScaredGhost is not None:
+                ghostDistFromRespawn = self.nearestPosition(nearestScaredGhost.start.getPosition(), (next_pos, ), walls)
+                pacmanDistFromRespawn = self.nearestPosition(nearestScaredGhost.start.getPosition(), (nearestScaredGhost.getPosition(), ), walls)
+                # if pacman or scared ghost are not near respawn location
+                if ghostDistFromRespawn > 1 or pacmanDistFromRespawn > 1:
+                    features["closest-scared-ghost"] = 1.0 - float(nearestScaredGhostDist) / (walls.width * walls.height)
+                    if next_pos in safeGhostPositions:
+                        features["eats-ghost"] = 1.0
             
             nearestCapsuleDist = self.nearestPosition(next_pos, capsuleList, walls)
             if nearestCapsuleDist is not None:
