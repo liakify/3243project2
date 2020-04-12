@@ -19,7 +19,6 @@ from featureExtractors import *
 import random,util,math
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 
 class QLearningAgent(ReinforcementAgent):
     """
