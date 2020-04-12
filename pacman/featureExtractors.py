@@ -289,15 +289,16 @@ class NewExtractor(FeatureExtractor):
         # check if next_pos has dangerous ghost
         if next_pos in dangerousGhostPositions:
             features["ghosts-in-next-pos"] = 1.0
+        else:
+            dist = closestFood(next_pos, food, walls)
+            if dist is not None:
+                features["closest-food"] = float(dist) / (walls.width * walls.height)
 
         # count the number of ghosts 1-step away that dangerous
         features["#-of-ghosts-1-step-away"] = sum( next_pos in Actions.getLegalNeighbors(g.getPosition(), walls) for g in ghostStates if g.scaredTimer <= 1)
         
         if not features["#-of-ghosts-1-step-away"]:
             # if there is no danger of ghosts then add the food feature
-            dist = closestFood(next_pos, food, walls)
-            if dist is not None:
-                features["closest-food"] = float(dist) / (walls.width * walls.height)
             if food[next_x][next_y]:
                 features["eats-food"] = 1.0
             
