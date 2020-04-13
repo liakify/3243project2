@@ -35,12 +35,22 @@ class Sudoku(object):
         for i in self.domains[empty_tile]:
             if self.assignment_is_consistent(empty_tile, i):
                 self.ans[empty_tile[0]][empty_tile[1]] = i
-                if self.solve(isInitial=False):
-                    return self.ans
+                old_domain_vals = self.domains[empty_tile]
+                self.domains[empty_tile] = [i]
+                inferred = self.inf(empty_tile)
+                if (inferred[1] != self.FAILURE):
+                    if self.solve(isInitial=False):
+                        return self.ans
+                self.restore_domain_vals(inferred[0])
                 self.ans[empty_tile[0]][empty_tile[1]] = 0
+                self.domains[empty_tile] = old_domain_vals
         self.empty.append(empty_tile)
         return False
         # TODO: Write your code here
+
+    def restore_domain_vals(self, removed_domain_values):
+        for (tile, domain_val) in removed_domain_values:
+            self.domains[tile].append(domain_val)
 
     def find_empty(self):
         for i in range(9):
@@ -49,7 +59,7 @@ class Sudoku(object):
                     return (i, j)
         return None
     
-    def get_all_neighbour_arcs_outgoing(self, arc_set, var):
+    def get_all_neighbour_arcs_from(self, arc_set, var):
         row, col = var
         square_top_left_row = (row // 3) * 3
         square_top_left_col = (col // 3) * 3
@@ -64,7 +74,7 @@ class Sudoku(object):
                 if (i, j) != (row, col):
                     arc_set.add((row, col, i, j))      
 
-    def get_all_neighbour_arcs_incoming(self, arc_set, var, excluded):
+    def get_all_neighbour_arcs_to(self, arc_set, var, excluded):
         row, col = var
         square_top_left_row = (row // 3) * 3
         square_top_left_col = (col // 3) * 3
@@ -77,23 +87,38 @@ class Sudoku(object):
         for i in range(square_top_left_row, square_top_left_row + 3):
             for j in range(square_top_left_col, square_top_left_col + 3):
                 if (i, j) != (row, col) and excluded != (i, j):
-                    arc_set.add((i, j, row, col)) 
+                    arc_set.add((i, j, row, col))
+
+    def inf(self, var):
+        queue = set()
+        self.get_all_neighbour_arcs_to(queue, var, None)
+        removed_domains = []
+        while len(queue) != 0:
+            a,b,c,d = queue.pop()
+            start = (a,b)
+            end = (c,d)
+            if (self.revise(start, end, removed_domain_values=removed_domains)):
+                if (len(self.domains[start])) == 0:
+                    return removed_domains, self.FAILURE
+                self.get_all_neighbour_arcs_to(queue, start, end)
+        return removed_domains, None
+
 
     def initial_inf(self):
         queue = set()
         for empty_tile in self.empty:
-            self.get_all_neighbour_arcs_outgoing(queue, empty_tile)
+            self.get_all_neighbour_arcs_from(queue, empty_tile)
         # print(queue)
         while len(queue) != 0:
             a,b,c,d = queue.pop()
             start = (a,b)
             end = (c,d)
             if self.revise(start, end):
-                if len(self.domains[start]):
-                    return self.FAILURE
-                self.get_all_neighbour_arcs_incoming(queue, start, end)
+                if len(self.domains[start]) == 0:
+                    return self.FAILURE # won't be reached since all puzzles guaranteed to be well formed and to have at least one solution
+                self.get_all_neighbour_arcs_to(queue, start, end)
 
-    def revise(self, start, end):
+    def revise(self, start, end, removed_domain_values=None):
         start_domain = self.domains[start]
         end_domain = self.domains[end]
         if len(end_domain) > 1:
@@ -101,7 +126,9 @@ class Sudoku(object):
         only_val_in_end = end_domain[0]
         for i in range(len(start_domain)):
             if start_domain[i] == only_val_in_end:
-                start_domain.pop(i)
+                popped = start_domain.pop(i)
+                if removed_domain_values != None:
+                    removed_domain_values.append((start, popped))
                 return True
 
     def assignment_is_consistent(self, var, value):
