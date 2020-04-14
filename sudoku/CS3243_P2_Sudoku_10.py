@@ -40,13 +40,12 @@ class Sudoku(object):
         unassigned = self.get_unassigned()
         if len(unassigned) == 0:
             return self.ans
+        # First area we can vary algorithm
         var = self.select_unassigned_variable(unassigned)
         var_row, var_col = var
+        # Second area we can vary algorithm
         ordered_domain_vals = self.get_and_order_domain_vals(var)
-        for val in ordered_domain_vals:
-            self.ans = copy.deepcopy(self.puzzle)
-            #if self.assignment_is_consistent(var, val):
-                
+        for val in ordered_domain_vals:                
             self.ans[var_row][var_col] = val
             self.domain_values[var_row][var_col] = [val]
             inf = self.inference(var)
@@ -187,15 +186,56 @@ class Sudoku(object):
         
         return False
 
+########## VARIANTS FOR CHOOSING UNASSIGNED VAR ###############
+
     # We can choose a heuristic here for selecting an unassigned variable
     def select_unassigned_variable(self, unassigned):
         # For now just choose first variable
         return unassigned[0]
+    
+    def select_most_constrained_variable(self, unassigned):
+        if len(unassigned) == 0:
+            return unassigned
+        var = unassigned[0]
+        most_constrained_dom_size = 10 # just an arbitary number larger than the possible domain size. This means that it will eventually be updated
+        for (x, y) in unassigned:
+            new_dom_size = len(self.domain_values[x][y]) 
+            if new_dom_size < most_constrained_dom_size:
+                var = (x, y)
+                most_constrained_dom_size = new_dom_size
+        return var
+    
+    def select_most_constraining_variable(self, unassigned):
+        if len(unassigned) == 0:
+            return unassigned
+        var = unassigned[0]
+        constraint_size = -1
+        for (x, y) in unassigned:
+            new_constraint_size = len(self.get_neighbours(x, y, True))
+            if new_constraint_size > constraint_size:
+                var = (x, y)
+                constraint_size = new_constraint_size
+        return var
+
+########## VARIANTS FOR ORDERING DOMAINS VALS ###############
 
     def get_and_order_domain_vals(self, var):
         domain_values = self.domain_values[var[0]][var[1]]
         # We can add more stuff here for ordering the values
         return domain_values # Currently no ordering
+
+    def order_by_least_constraining_val(self, var):
+        row, col = var
+        domain_values = self.domain_values[row][col]
+        val_constraint_map = {}
+        for val in domain_values:
+            num_constraints = 0
+            for (x, y) in self.get_neighbours(row, col, False):
+                if val in self.domain_values[x][y]:
+                    num_constraints += 1
+            val_constraint_map[val] = num_constraints
+        return sorted(domain_values, key=lambda val: val_constraint_map[val])
+
 
     # you may add more classes/functions if you think is useful
     # However, ensure all the classes/functions are in this file ONLY
