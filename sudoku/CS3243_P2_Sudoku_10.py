@@ -5,7 +5,6 @@ import time
 # Running script: given code can be run with the command:
 # python file.py, ./path/to/init_state.txt ./output/output.txt
 
-start_time = time.time()
 # initial_inf = 0
 
 class Sudoku(object):
@@ -16,6 +15,8 @@ class Sudoku(object):
         self.ans = copy.deepcopy(puzzle) # self.ans is a list of lists
         self.domains = {}
         self.empty = []
+        self.filled_at_start = []
+        self.nodes_explored = 0
         for i in range(9):
             for j in range(9):
                 current_val = self.ans[i][j]
@@ -24,14 +25,16 @@ class Sudoku(object):
                     self.empty.append((i,j))
                 else:
                     self.domains[(i,j)] = [current_val]
+                    self.filled_at_start.append((i,j))
     def solve(self, isInitial=True):
         if isInitial:
+            intial_inf_time = time.time()
             self.initial_inf()
+            print("Time taken for pre-processing: "+ str(time.time() - intial_inf_time))
+        self.nodes_explored += 1
         if len(self.empty) == 0:
             return self.ans
-        empty_tile = self.empty.pop()
-        # if not empty_tile:
-        #     return self.ans
+        empty_tile = self.select_most_constrained_variable()
         for i in self.domains[empty_tile]:
             if self.assignment_is_consistent(empty_tile, i):
                 self.ans[empty_tile[0]][empty_tile[1]] = i
@@ -52,107 +55,81 @@ class Sudoku(object):
         for (tile, domain_val) in removed_domain_values:
             self.domains[tile].append(domain_val)
 
-    def find_empty(self):
-        for i in range(9):
-            for j in range(9):
-                if self.ans[i][j] == 0:
-                    return (i, j)
-        return None
-    
-    def get_all_neighbour_arcs_from(self, arc_set, var):
-        row, col = var
+    def eliminate_used_number(self, filled_tile):
+        row, col = filled_tile
+        value = self.ans[row][col]
         square_top_left_row = (row // 3) * 3
         square_top_left_col = (col // 3) * 3
         for i in range(9):
-            if col != i:
-                arc_set.add((row, col, row, i))
+            current = (row, i)
+            current_domains = self.domains[current]
+            if current != filled_tile and len(current_domains) != 1 and value in current_domains:
+                current_domains.remove(value)
+                if len(current_domains) == 1:
+                    self.ans[current[0]][current[1]] = current_domains[0]
+                    self.filled_at_start.append(current)
         for i in range(9):
-            if row != i:
-                arc_set.add((row, col, i, col))
+            current = (i, col)
+            current_domains = self.domains[current]
+            if current != filled_tile and len(current_domains) != 1 and value in current_domains:
+                current_domains.remove(value)
+                if len(current_domains) == 1:
+                    self.ans[current[0]][current[1]] = current_domains[0]
+                    self.filled_at_start.append(current)
         for i in range(square_top_left_row, square_top_left_row + 3):
             for j in range(square_top_left_col, square_top_left_col + 3):
-                if (i, j) != (row, col):
-                    arc_set.add((row, col, i, j))      
-
-    def get_all_neighbour_arcs_to(self, arc_set, var, excluded):
-        row, col = var
-        square_top_left_row = (row // 3) * 3
-        square_top_left_col = (col // 3) * 3
-        for i in range(9):
-            if col != i and excluded != (row, i):
-                arc_set.add((row, i, row, col))
-        for i in range(9):
-            if row != i and excluded != (i, col):
-                arc_set.add((i, col, row, col))
-        for i in range(square_top_left_row, square_top_left_row + 3):
-            for j in range(square_top_left_col, square_top_left_col + 3):
-                if (i, j) != (row, col) and excluded != (i, j):
-                    arc_set.add((i, j, row, col))
-
-    def inf(self, var):
-        queue = set()
-        self.get_all_neighbour_arcs_to(queue, var, None)
-        removed_domains = []
-        while len(queue) != 0:
-            a,b,c,d = queue.pop()
-            start = (a,b)
-            end = (c,d)
-            if (self.revise(start, end, removed_domain_values=removed_domains)):
-                if (len(self.domains[start])) == 0:
-                    return removed_domains, self.FAILURE
-                self.get_all_neighbour_arcs_to(queue, start, end)
-        return removed_domains, None
-
-
+                current = (i, j)
+                current_domains = self.domains[current]
+                if current != filled_tile and len(current_domains) != 1 and value in current_domains:
+                    current_domains.remove(value)
+                    if len(current_domains) == 1:
+                        self.ans[current[0]][current[1]] = current_domains[0]
+                        self.filled_at_start.append(current)
+                        
     def initial_inf(self):
-        queue = set()
-        for empty_tile in self.empty:
-            self.get_all_neighbour_arcs_from(queue, empty_tile)
-        # print(queue)
-        while len(queue) != 0:
-            a,b,c,d = queue.pop()
-            start = (a,b)
-            end = (c,d)
-            if self.revise(start, end):
-                if len(self.domains[start]) == 0:
-                    return self.FAILURE # won't be reached since all puzzles guaranteed to be well formed and to have at least one solution
-                self.get_all_neighbour_arcs_to(queue, start, end)
-
-    def revise(self, start, end, removed_domain_values=None):
-        start_domain = self.domains[start]
-        end_domain = self.domains[end]
-        if len(end_domain) > 1:
-            return False
-        only_val_in_end = end_domain[0]
-        for i in range(len(start_domain)):
-            if start_domain[i] == only_val_in_end:
-                popped = start_domain.pop(i)
-                if removed_domain_values != None:
-                    removed_domain_values.append((start, popped))
-                return True
-
-    def assignment_is_consistent(self, var, value):
-        # Need to perform 3 * 8 = 24 checks (within row, col and 3x3 square)
-        row, col = var
-        square_top_left_row = (row // 3) * 3
-        square_top_left_col = (col // 3) * 3
-        # Row check
-        for i in range(9):
-            if i != col and self.ans[row][i] == value:
-                return False
-
-        # Col check
-        for i in range(9):
-            if i != row and self.ans[i][col] == value:
-                return False
-
-        # 3x3 square check
-        for i in range(square_top_left_row, square_top_left_row + 3):
-            for j in range(square_top_left_col, square_top_left_col + 3):
-                if (i, j) != var and self.ans[i][j] == value:
-                    return False
-        return True
+        for filled_tile in self.filled_at_start:
+            self.eliminate_used_number(filled_tile)
     
+    def inf(self, tile):
+        self.filled_at_start = [tile]
+        removed_domains = []
+        for filled_tile in self.filled_at_start:
+            row, col = filled_tile
+            value = self.domains[filled_tile][0]
+            square_top_left_row = (row // 3) * 3
+            square_top_left_col = (col // 3) * 3
+            for i in range(9):
+                current = (row, i)
+                current_domains = self.domains[current]
+                if current != filled_tile and value in current_domains:
+                    current_domains.remove(value)
+                    removed_domains.append((current, value))
+                    if len(current_domains) == 1:
+                        self.filled_at_start.append(current)
+                    elif len(current_domains) == 0:
+                        return removed_domains, self.FAILURE
+            for i in range(9):
+                current = (i, col)
+                current_domains = self.domains[current]
+                if current != filled_tile and value in current_domains:
+                    current_domains.remove(value)
+                    removed_domains.append((current, value))
+                    if len(current_domains) == 1:
+                        self.filled_at_start.append(current)
+                    elif len(current_domains) == 0:
+                        return removed_domains, self.FAILURE
+            for i in range(square_top_left_row, square_top_left_row + 3):
+                for j in range(square_top_left_col, square_top_left_col + 3):
+                    current = (i, j)
+                    current_domains = self.domains[current]
+                    if current != filled_tile and value in current_domains:
+                        current_domains.remove(value)
+                        removed_domains.append((current, value))
+                        if len(current_domains) == 1:
+                            self.filled_at_start.append(current)
+                        elif len(current_domains) == 0:
+                            return removed_domains, self.FAILURE
+        return removed_domains, None
     def assignment_is_consistent(self, var, value):
         # Need to perform 3 * 8 = 24 checks (within row, col and 3x3 square)
         row, col = var
@@ -162,27 +139,29 @@ class Sudoku(object):
         for i in range(9):
             if i != col and self.ans[row][i] == value:
                 return False
-            # dom_values = self.domain_values[row][i]
-            # if len(dom_values) == 1 and dom_values[0] == value:
-            #     return False
 
         # Col check
         for i in range(9):
             if i != row and self.ans[i][col] == value:
                 return False
-            # dom_values = self.domain_values[i][col]
-            # if len(dom_values) == 1 and dom_values[0] == value:
-            #     return False
 
         # 3x3 square check
         for i in range(square_top_left_row, square_top_left_row + 3):
             for j in range(square_top_left_col, square_top_left_col + 3):
                 if (i, j) != var and self.ans[i][j] == value:
                     return False
-                # dom_values = self.domain_values[i][j]
-                # if len(dom_values) == 1 and dom_values[0] == value:
-                #     return False
         return True
+
+    def select_most_constrained_variable(self):
+        var_index = -1
+        # most_constrained_dom_size = 10 # just an arbitary number larger than the possible domain size. This means that it will eventually be updated
+        # for i in range(len(self.empty)):
+        #     empty_tile = self.empty[i]
+        #     new_dom_size = len(self.domains[empty_tile]) 
+        #     if new_dom_size < most_constrained_dom_size:
+        #         var_index = i
+        #         most_constrained_dom_size = new_dom_size
+        return self.empty.pop(var_index)
     # you may add more classes/functions if you think is useful
     # However, ensure all the classes/functions are in this file ONLY
     # Note that our evaluation scripts only call the solve method.
@@ -212,13 +191,15 @@ if __name__ == "__main__":
                 if j == 9:
                     i += 1
                     j = 0
+    start_time = time.time()
 
     sudoku = Sudoku(puzzle)
     ans = sudoku.solve()
     
-    print(time.time() - start_time)
+    print("Total time taken: " + str(time.time() - start_time))
+    print("Nodes explored: "+ str(sudoku.nodes_explored))
 
-    print(ans)
+    # print(ans)
     with open(sys.argv[2], 'a') as f:
          for i in range(9):
              for j in range(9):
