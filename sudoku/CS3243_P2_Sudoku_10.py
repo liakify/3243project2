@@ -36,17 +36,16 @@ class Sudoku(object):
             return self.ans
         empty_tile = self.select_most_constrained_variable()
         for i in self.domains[empty_tile]:
-            if self.assignment_is_consistent(empty_tile, i):
-                self.ans[empty_tile[0]][empty_tile[1]] = i
-                old_domain_vals = self.domains[empty_tile]
-                self.domains[empty_tile] = [i]
-                inferred = self.inf(empty_tile)
-                if (inferred[1] != self.FAILURE):
-                    if self.solve(isInitial=False):
-                        return self.ans
-                self.restore_domain_vals(inferred[0])
-                self.ans[empty_tile[0]][empty_tile[1]] = 0
-                self.domains[empty_tile] = old_domain_vals
+            self.ans[empty_tile[0]][empty_tile[1]] = i
+            old_domain_vals = self.domains[empty_tile]
+            self.domains[empty_tile] = [i]
+            inferred = self.inf(empty_tile)
+            if (inferred[1] != self.FAILURE):
+                if self.solve(isInitial=False):
+                    return self.ans
+            self.restore_domain_vals(inferred[0])
+            self.ans[empty_tile[0]][empty_tile[1]] = 0
+            self.domains[empty_tile] = old_domain_vals
         self.empty.append(empty_tile)
         return False
         # TODO: Write your code here
