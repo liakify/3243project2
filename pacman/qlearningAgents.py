@@ -17,6 +17,8 @@ from learningAgents import ReinforcementAgent
 from featureExtractors import *
 
 import random,util,math
+import pandas as pd
+import matplotlib.pyplot as plt
 
 class QLearningAgent(ReinforcementAgent):
     """
@@ -176,6 +178,12 @@ class ApproximateQAgent(PacmanQAgent):
         self.featExtractor = util.lookup(extractor, globals())()
         PacmanQAgent.__init__(self, **args)
         self.weights = util.Counter()
+        # weights tracking
+        self.df = pd.DataFrame()
+        # live graph display
+        self.fig, self.ax = plt.subplots()
+        plt.ion()
+        plt.show()
 
     def getWeights(self):
         return self.weights
@@ -204,7 +212,20 @@ class ApproximateQAgent(PacmanQAgent):
         PacmanQAgent.final(self, state)
 
         # did we finish training?
+        if self.episodesSoFar <= self.numTraining:
+            print(self.episodesSoFar)
+            print(self.weights)
+            self.df = self.df.append(pd.Series(self.weights), ignore_index=True)
+            # live plot
+            self.ax.clear()
+            lines = self.ax.plot(self.df.index, self.df)
+            for i in range(len(lines)):
+                lines[i].set_label(self.df.columns[i])
+            self.ax.legend()
+            plt.pause(0.001)
         if self.episodesSoFar == self.numTraining:
             # you might want to print your weights here for debugging
             "*** YOUR CODE HERE ***"
+            # save the weights data
+            self.df.to_csv("training-weights.csv")
             pass

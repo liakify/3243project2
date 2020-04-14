@@ -130,7 +130,7 @@ class NewExtractor(FeatureExtractor):
                 if currentPos[0] == int(ghostPos[0]) and currentPos[1] == int(ghostPos[1]):
                     for ghost in ghostStates:
                         if ghostPos == ghost.getPosition() and ghost.scaredTimer > g:
-                            return g
+                            return (g, ghost)
 
             nbrs = Actions.getLegalNeighbors(currentPos, walls)
             for nbr_x, nbr_y in nbrs:
@@ -143,24 +143,24 @@ class NewExtractor(FeatureExtractor):
                     new_f = self.closestGhostEval(newPos, ghostPositions, new_g)
                     heapq.heappush(fringe, (new_f, new_g, newPos))
 
-        return 0
+        return (None, None)
 
-    def nearestCapsule(self, pos, capsules, walls):
-        fringe = [(pos[0], pos[1], 0)]
+    def nearestPosition(self, start, targets, walls):
+        fringe = [(start[0], start[1], 0)]
         expanded = set()
         while fringe:
             pos_x, pos_y, dist = fringe.pop(0)
             if (pos_x, pos_y) in expanded:
                 continue
             expanded.add((pos_x, pos_y))
-            # if we find a food at this location then exit
-            if (pos_x, pos_y) in capsules:
+            # if we find a target at this location then exit
+            if (pos_x, pos_y) in targets:
                 return dist
             # otherwise spread out from the location to its neighbours
             nbrs = Actions.getLegalNeighbors((pos_x, pos_y), walls)
             for nbr_x, nbr_y in nbrs:
                 fringe.append((nbr_x, nbr_y, dist+1))
-        # no food found
+        # no target found
         return None
     
     def closestGhostMD(self, pacmanPos, safeGhostPositions):
@@ -210,41 +210,55 @@ class NewExtractor(FeatureExtractor):
         # no food found
         return count
 
-    def nearestEscapeRoute(self, pacmanPos, dangerousGhostPositions, walls):
-        numOfPacman = 1
-        numOfSafeRoutes = 0
-        fringe = [(pacmanPos, 0, 'pacman')]
+    def analyseSafePaths(self, pacmanPos, nextPos, dangerousGhostPositions, walls):
+        pacmanFringeCount = 1
+        numOfSafeRoutesNext = 0
+        numOfSafeRoutesTotal = 0
+        distOfSafeRoutesNext = 0
+        distOfSafeRoutesTotal = 0
+        fringe = []
         for ghost in dangerousGhostPositions:
-            fringe.append((ghost, 0, 'ghost'))
+            fringe.append((ghost, 0, 'ghost', False))
+        fringe.append((pacmanPos, 0, 'pacman', False))
 
         expanded = set()
         ghostExpanded = set()
 
-        while numOfPacman > 0:
-            pos, dist, identity = fringe.pop(0)
+        while pacmanFringeCount > 0:
+            pos, dist, identity, included = fringe.pop(0)
             if identity is 'pacman':
-                numOfPacman -= 1
+                pacmanFringeCount -= 1
                 if pos in expanded:
                     continue
 
                 expanded.add(pos)
                 pacmanNeighbors = Actions.getLegalNeighbors(pos, walls)
-                if len(pacmanNeighbors) > 3:
-                    numOfSafeRoutes += 1
+                clearSurroundings = 0
                 for neighbour in pacmanNeighbors:
                     if neighbour not in ghostExpanded:
-                        fringe.append((neighbour, dist + 1, 'pacman'))
-                        numOfPacman += 1
-
+                        clearSurroundings += 1
+                        pacmanFringeCount += 1
+                        fringe.append((neighbour, dist + 1, 'pacman', included or pos == nextPos))
+                if clearSurroundings > 1:
+                    numOfSafeRoutesTotal += 1
+                    distOfSafeRoutesTotal += dist
+                    if included or pos == nextPos:
+                        numOfSafeRoutesNext += 1
+                        distOfSafeRoutesNext += dist
+                # twice more safe routes than dangerous ghosts, can terminate
+                # if numOfSafeRoutesNext >= 2 * len(dangerousGhostPositions):
+                #     return numOfSafeRoutesNext / numOfSafeRoutesTotal
             else:
                 if pos in ghostExpanded:
                     continue
                 ghostExpanded.add(pos)
                 ghostNeighbors = Actions.getLegalNeighbors(pos, walls)
                 for neighbor in ghostNeighbors:
-                    fringe.append((neighbor, dist + 1, 'ghost'))
+                    fringe.append((neighbor, dist + 1, 'ghost', False))
 
-        return numOfSafeRoutes
+        safeRouteProportion = 0.0 if numOfSafeRoutesTotal == 0 else float(numOfSafeRoutesNext) / numOfSafeRoutesTotal
+        distanceProportion = 1.0 if distOfSafeRoutesTotal == 0 else float(distOfSafeRoutesNext) / distOfSafeRoutesTotal
+        return safeRouteProportion * (1 - distanceProportion)
 
     def getFeatures(self, state, action):
         "*** YOUR CODE HERE ***"
@@ -267,34 +281,46 @@ class NewExtractor(FeatureExtractor):
         next_x, next_y = int(x + dx), int(y + dy)
         next_pos = (next_x, next_y)
 
+        '''
+        if next_pos == state.getPacmanPosition():
+            features["not-moving"] = 1.0
+        '''
+        
+        # check if next_pos has dangerous ghost
+        if next_pos in dangerousGhostPositions:
+            features["ghosts-in-next-pos"] = 1.0
+        else:
+            dist = closestFood(next_pos, food, walls)
+            if dist is not None:
+                features["closest-food"] = float(dist) / (walls.width * walls.height)
+
         # count the number of ghosts 1-step away that dangerous
         features["#-of-ghosts-1-step-away"] = sum( next_pos in Actions.getLegalNeighbors(g.getPosition(), walls) for g in ghostStates if g.scaredTimer <= 1)
-
-        dist = closestFood(next_pos, food, walls)
-        if dist is not None:
-            features["closest-food"] = (float(dist) / (walls.width * walls.height))
-
-        # if there is no danger of ghosts then add the food feature
-        if not features["#-of-ghosts-1-step-away"] and food[next_x][next_y]:
-           if dist is not None and len(safeGhostPositions) == 0:
-               features["eats-food"] = 1.0 - (float(dist) / (walls.width * walls.height))
-
-        # if there are safe ghosts then add the closest safe ghost feature
-        if not features["#-of-ghosts-1-step-away"]:
-            nearestScaredGhostDist = self.nearestEdibleScaredGhost(next_pos, state, walls)
-            features["closest-edible-ghost"] = 1.0 - (float(nearestScaredGhostDist) / (walls.width * walls.height))
         
-        if len(safeGhostPositions) == 0:
-            nearestCapsuleDist = self.nearestCapsule(next_pos, capsuleList, walls)
+        if not features["#-of-ghosts-1-step-away"]:
+            # if there is no danger of ghosts then add the food feature
+            if food[next_x][next_y]:
+                features["eats-food"] = 1.0
+            
+            nearestScaredGhostDist, nearestScaredGhost = self.nearestEdibleScaredGhost(next_pos, state, walls)
+            if nearestScaredGhost is not None:
+                ghostDistFromRespawn = self.nearestPosition(nearestScaredGhost.start.getPosition(), (next_pos, ), walls)
+                pacmanDistFromRespawn = self.nearestPosition(nearestScaredGhost.start.getPosition(), (nearestScaredGhost.getPosition(), ), walls)
+                # if pacman or scared ghost are not near respawn location
+                if ghostDistFromRespawn > 1 or pacmanDistFromRespawn > 1:
+                    features["closest-scared-ghost"] = 1.0 - float(nearestScaredGhostDist) / (walls.width * walls.height)
+                    if next_pos in safeGhostPositions:
+                        features["eats-ghost"] = 1.0
+            
+            nearestCapsuleDist = self.nearestPosition(next_pos, capsuleList, walls)
             if nearestCapsuleDist is not None:
-                features["closest-capsule"] = float(nearestCapsuleDist) / (walls.width * walls.height)
-        else:
-            features["eats-capsule"] = 1.0
-
-
-    
+                features["closest-capsule"] = 1.0 - float(nearestCapsuleDist) / (walls.width * walls.height)
+            
+            if next_pos in capsuleList:
+                features["eats-capsule"] = len(dangerousGhostPositions)
+        '''
+        safePathScore = self.analyseSafePaths(state.getPacmanPosition(), next_pos, dangerousGhostPositions, walls)
+        features["safe-path-score"] = safePathScore
+        '''
         features.divideAll(10.0)
         return features
-
-
-        
