@@ -1,8 +1,11 @@
 import sys
 import copy
+import time
 
 # Running script: given code can be run with the command:
 # python file.py, ./path/to/init_state.txt ./output/output.txt
+
+start_time = time.time()
 
 class Sudoku(object):
     FAILURE = -1
@@ -23,24 +26,36 @@ class Sudoku(object):
     def get_unassigned(self):
         return [(i,j) for i in range(9) for j in range(9) if self.puzzle[i][j] == 0]
 
-    def solve(self):
+    def solve(self, flag=True):
+        if flag:
+            inf = self.inference(None)
+           
+            if inf != self.FAILURE:
+                new_sudoku = Sudoku(inf[0], domain_values=inf[1])
+                result = new_sudoku.solve(flag=False)
+                         
+                if result != self.FAILURE:
+                    return result
+
         unassigned = self.get_unassigned()
         if len(unassigned) == 0:
             return self.ans
+        # First area we can vary algorithm
         var = self.select_unassigned_variable(unassigned)
         var_row, var_col = var
+        # Second area we can vary algorithm
         ordered_domain_vals = self.get_and_order_domain_vals(var)
-        for val in ordered_domain_vals:
-            self.ans = copy.deepcopy(self.puzzle)
-            if self.assignment_is_consistent(var, val):
-                self.ans[var_row][var_col] = val
-                self.domain_values[var_row][var_col] = [val]
-                inf = self.inference()
-                if inf != self.FAILURE:
-                    new_sudoku = Sudoku(inf[0], domain_values=inf[1])
-                    result = new_sudoku.solve()
-                    if result != self.FAILURE:
-                        return result
+        for val in ordered_domain_vals:                
+            self.ans[var_row][var_col] = val
+            self.domain_values[var_row][var_col] = [val]
+            inf = self.inference(var)
+            if inf != self.FAILURE:
+                new_sudoku = Sudoku(inf[0], domain_values=inf[1])
+                result = new_sudoku.solve(False)
+
+                if result != self.FAILURE:
+                    return result
+            
             # If we reach here we need to undo the assignment
             self.ans[var_row][var_col] = 0
             self.domain_values[var_row][var_col] = ordered_domain_vals
@@ -81,25 +96,146 @@ class Sudoku(object):
                     return False
         return True
     
-    def inference(self):
+    def inference(self, cell):
         # Do inference here such as AC-3
         # Will need to make a deep copy of the domain values while doing inference
         # so that we do not lose the information of the domain values of the
         # other nodes. if we discover a variable for which we have an empty
         # domain, we return FAILURE. Otherwise we can either return the original
         # domains or the reduced domains
-        return (self.ans, self.domain_values)
+        
+        domain_vals = copy.deepcopy(self.domain_values) 
+        
+        if cell == None:
+            queue = self.get_arcs()
+        else:
+            row, col = cell
+            queue = set()
+      
+            for x in self.get_neighbours(row, col, True):
+                queue.add((x, cell))
+        
+        while len(queue) != 0:
+            (Xi, Xj) = queue.pop()
+            row_i, col_i = Xi
 
+            if (self.revise(domain_vals, Xi, Xj)):
+                if (len(domain_vals[row_i][col_i]) == 0):
+                    return self.FAILURE
+                
+                for Xk in self.get_neighbours(row_i, col_i, False):
+                    if Xk != Xj:                    
+                        queue.add((Xk, Xi))
+        
+        return (self.ans, domain_vals)
     
+    # Get all the arcs in the CSP used when AC-3 done at pre-processing
+    def get_arcs(self):
+        arcs = set()
+
+        for row in range(9):
+            for col in range(9):
+                 for (x, y) in self.get_neighbours(row, col, False):
+                      arcs.add(((row, col), (x, y)))
+    
+        return arcs    
+
+    # Get all neighbours of a particular cell in the CSP
+    def get_neighbours(self, row, col, signal):
+        square_top_row = (row // 3) * 3
+        square_left_most_col = (col // 3) * 3
+        result = []        
+
+        # Get neighbours in the same row
+        for i in range(9):
+            if i != col and (not signal or (signal and self.ans[row][i] == 0)):
+                 result.append((row, i))
+
+        # Get neighbours in the same col
+        for j in range(9):
+            if j != row and (not signal or (signal and self.ans[j][col] == 0)):
+                result.append((j, col))
+
+        # Get neighbours in the same 3x3 grid
+        for i in range(square_top_row, square_top_row + 3):
+            for j in range(square_left_most_col, square_left_most_col + 3):
+                if (row, col) != (i, j) and (not signal or (signal and self.ans[i][j] == 0)):
+                    result.append((i, j))
+        
+        return result
+ 
+    # Revise function
+    def revise(self, domain_vals, Xi, Xj):
+        row, col = Xi
+        revised = False
+
+        for x in domain_vals[row][col]:
+            if not self.found_valid_value(domain_vals, x, Xj):
+                 domain_vals[row][col].remove(x)
+                 revised = True
+        
+        return revised
+
+    # Find a valid value in Xj if x was assigned to Xi
+    def found_valid_value(self, domain_vals, x, Xj):
+        row, col = Xj
+
+        for j in domain_vals[row][col]:
+            if j != x:
+                return True
+        
+        return False
+
+########## VARIANTS FOR CHOOSING UNASSIGNED VAR ###############
+
     # We can choose a heuristic here for selecting an unassigned variable
     def select_unassigned_variable(self, unassigned):
         # For now just choose first variable
         return unassigned[0]
+    
+    def select_most_constrained_variable(self, unassigned):
+        if len(unassigned) == 0:
+            return unassigned
+        var = unassigned[0]
+        most_constrained_dom_size = 10 # just an arbitary number larger than the possible domain size. This means that it will eventually be updated
+        for (x, y) in unassigned:
+            new_dom_size = len(self.domain_values[x][y]) 
+            if new_dom_size < most_constrained_dom_size:
+                var = (x, y)
+                most_constrained_dom_size = new_dom_size
+        return var
+    
+    def select_most_constraining_variable(self, unassigned):
+        if len(unassigned) == 0:
+            return unassigned
+        var = unassigned[0]
+        constraint_size = -1
+        for (x, y) in unassigned:
+            new_constraint_size = len(self.get_neighbours(x, y, True))
+            if new_constraint_size > constraint_size:
+                var = (x, y)
+                constraint_size = new_constraint_size
+        return var
+
+########## VARIANTS FOR ORDERING DOMAINS VALS ###############
 
     def get_and_order_domain_vals(self, var):
         domain_values = self.domain_values[var[0]][var[1]]
         # We can add more stuff here for ordering the values
         return domain_values # Currently no ordering
+
+    def order_by_least_constraining_val(self, var):
+        row, col = var
+        domain_values = self.domain_values[row][col]
+        val_constraint_map = {}
+        for val in domain_values:
+            num_constraints = 0
+            for (x, y) in self.get_neighbours(row, col, False):
+                if val in self.domain_values[x][y]:
+                    num_constraints += 1
+            val_constraint_map[val] = num_constraints
+        return sorted(domain_values, key=lambda val: val_constraint_map[val])
+
 
     # you may add more classes/functions if you think is useful
     # However, ensure all the classes/functions are in this file ONLY
@@ -133,9 +269,12 @@ if __name__ == "__main__":
 
     sudoku = Sudoku(puzzle)
     ans = sudoku.solve()
-    print(ans)
-    # with open(sys.argv[2], 'a') as f:
-    #     for i in range(9):
-    #         for j in range(9):
-    #             f.write(str(ans[i][j]) + " ")
-    #         f.write("\n")
+    
+    print(time.time() - start_time)
+
+    #print(ans)
+    with open(sys.argv[2], 'a') as f:
+         for i in range(9):
+             for j in range(9):
+                 f.write(str(ans[i][j]) + " ")
+             f.write("\n")
