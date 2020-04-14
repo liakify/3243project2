@@ -45,10 +45,7 @@ class Sudoku(object):
         var_row, var_col = var
         # Second area we can vary algorithm
         ordered_domain_vals = self.get_and_order_domain_vals(var)
-        for val in ordered_domain_vals:
-            self.ans = copy.deepcopy(self.puzzle)
-            #if self.assignment_is_consistent(var, val):
-                
+        for val in ordered_domain_vals:                
             self.ans[var_row][var_col] = val
             self.domain_values[var_row][var_col] = [val]
             inf = self.inference(var)
