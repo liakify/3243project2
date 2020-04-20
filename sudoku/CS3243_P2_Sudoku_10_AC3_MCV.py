@@ -45,7 +45,7 @@ class Sudoku(object):
         unassigned = self.get_unassigned()
         if len(unassigned) == 0:
             return self.ans
-        var = self.select_unassigned_variable(unassigned)
+        var = self.select_most_constrained_variable(unassigned)
         var_row, var_col = var
         ordered_domain_vals = self.get_and_order_domain_vals(var)
         for val in ordered_domain_vals:
@@ -191,6 +191,19 @@ class Sudoku(object):
                 return True
         
         return False
+
+    # Select the most constrained variable
+    def select_most_constrained_variable(self, unassigned):
+        if len(unassigned) == 0:
+            return unassigned
+        var = unassigned[0]
+        most_constrained_dom_size = 10
+        for (x, y) in unassigned:
+            new_dom_size = len(self.domain_values[x][y]) 
+            if new_dom_size < most_constrained_dom_size:
+                var = (x, y)
+                most_constrained_dom_size = new_dom_size
+        return var
 
     # We can choose a heuristic here for selecting an unassigned variable
     def select_unassigned_variable(self, unassigned):
