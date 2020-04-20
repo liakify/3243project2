@@ -26,29 +26,33 @@ class Sudoku(object):
                 else:
                     self.domains[(i,j)] = [current_val]
                     self.filled_at_start.append((i,j))
+    
     def solve(self, isInitial=True):
         if isInitial:
             intial_inf_time = time.time()
             self.initial_inf()
             print("Time taken for pre-processing: "+ str(time.time() - intial_inf_time))
+        
         self.nodes_explored += 1
         if len(self.empty) == 0:
             return self.ans
+        
         empty_tile = self.select_most_constrained_variable()
         for i in self.domains[empty_tile]:
             self.ans[empty_tile[0]][empty_tile[1]] = i
             old_domain_vals = self.domains[empty_tile]
             self.domains[empty_tile] = [i]
+            
             inferred = self.inf(empty_tile)
             if (inferred[1] != self.FAILURE):
                 if self.solve(isInitial=False):
                     return self.ans
+            
             self.restore_domain_vals(inferred[0])
             self.ans[empty_tile[0]][empty_tile[1]] = 0
             self.domains[empty_tile] = old_domain_vals
         self.empty.append(empty_tile)
         return False
-        # TODO: Write your code here
 
     def restore_domain_vals(self, removed_domain_values):
         for (tile, domain_val) in removed_domain_values:
@@ -59,32 +63,33 @@ class Sudoku(object):
         value = self.ans[row][col]
         square_top_left_row = (row // 3) * 3
         square_top_left_col = (col // 3) * 3
+        
+        # Reduce the domains of tiles in the same row as the filled tile
         for i in range(9):
             current = (row, i)
-            current_domains = self.domains[current]
-            if current != filled_tile and len(current_domains) != 1 and value in current_domains:
-                current_domains.remove(value)
-                if len(current_domains) == 1:
-                    self.ans[current[0]][current[1]] = current_domains[0]
-                    self.filled_at_start.append(current)
+            self.initial_reduce_domain(current, filled_tile, value)
+            
+        # Reduce the domains of tiles in the same col as the filled tile
         for i in range(9):
             current = (i, col)
-            current_domains = self.domains[current]
-            if current != filled_tile and len(current_domains) != 1 and value in current_domains:
-                current_domains.remove(value)
-                if len(current_domains) == 1:
-                    self.ans[current[0]][current[1]] = current_domains[0]
-                    self.filled_at_start.append(current)
+            self.initial_reduce_domain(current, filled_tile, value)
+        
+        # Reduce the domains of tiles in the same square as the filled tile
         for i in range(square_top_left_row, square_top_left_row + 3):
             for j in range(square_top_left_col, square_top_left_col + 3):
                 current = (i, j)
-                current_domains = self.domains[current]
-                if current != filled_tile and len(current_domains) != 1 and value in current_domains:
-                    current_domains.remove(value)
-                    if len(current_domains) == 1:
-                        self.ans[current[0]][current[1]] = current_domains[0]
-                        self.filled_at_start.append(current)
+                self.initial_reduce_domain(current, filled_tile, value)
                         
+    def initial_reduce_domain(self, tile, filled_tile, value):
+        current_domains = self.domains[tile]
+        if tile != filled_tile and len(current_domains) != 1 and value in current_domains:
+            current_domains.remove(value)
+            
+            # If the domain of a tile is reduced to only one possible value, assign that value to the tile
+            if len(current_domains) == 1:
+                self.ans[tile[0]][tile[1]] = current_domains[0]
+                self.filled_at_start.append(tile)
+
     def initial_inf(self):
         for filled_tile in self.filled_at_start:
             self.eliminate_used_number(filled_tile)
@@ -97,38 +102,42 @@ class Sudoku(object):
             value = self.domains[filled_tile][0]
             square_top_left_row = (row // 3) * 3
             square_top_left_col = (col // 3) * 3
+            
+            # Reduce the domains of tiles in the same row as tile just filled
             for i in range(9):
                 current = (row, i)
-                current_domains = self.domains[current]
-                if current != filled_tile and value in current_domains:
-                    current_domains.remove(value)
-                    removed_domains.append((current, value))
-                    if len(current_domains) == 1:
-                        self.filled_at_start.append(current)
-                    elif len(current_domains) == 0:
-                        return removed_domains, self.FAILURE
+                result = self.reduce_domain(current, filled_tile, value, removed_domains)
+                if len(self.domains[current]) == 0:
+                    return removed_domains, self.FAILURE
+
+            # Reduce the domains of tiles in the same col as tile just filled
             for i in range(9):
                 current = (i, col)
-                current_domains = self.domains[current]
-                if current != filled_tile and value in current_domains:
-                    current_domains.remove(value)
-                    removed_domains.append((current, value))
-                    if len(current_domains) == 1:
-                        self.filled_at_start.append(current)
-                    elif len(current_domains) == 0:
-                        return removed_domains, self.FAILURE
+                result = self.reduce_domain(current, filled_tile, value, removed_domains)
+                if len(self.domains[current]) == 0:
+                    return removed_domains, self.FAILURE
+            
+            # Reduce the domains of tiles in the same wquare as tile just filled
             for i in range(square_top_left_row, square_top_left_row + 3):
                 for j in range(square_top_left_col, square_top_left_col + 3):
                     current = (i, j)
-                    current_domains = self.domains[current]
-                    if current != filled_tile and value in current_domains:
-                        current_domains.remove(value)
-                        removed_domains.append((current, value))
-                        if len(current_domains) == 1:
-                            self.filled_at_start.append(current)
-                        elif len(current_domains) == 0:
-                            return removed_domains, self.FAILURE
+                    result = self.reduce_domain(current, filled_tile, value, removed_domains)
+                    if len(self.domains[current]) == 0:
+                        return removed_domains, self.FAILURE
+        
         return removed_domains, None
+    
+    def reduce_domain(self, tile, filled_tile, value, removed_domains):
+
+        current_domains = self.domains[tile]
+        if tile != filled_tile and value in current_domains:
+            current_domains.remove(value)
+            removed_domains.append((tile, value))
+            
+            # If domain of tile is reduced to only one value, assign that value to the tile
+            if len(current_domains) == 1:
+                self.filled_at_start.append(tile)
+    
     def assignment_is_consistent(self, var, value):
         # Need to perform 3 * 8 = 24 checks (within row, col and 3x3 square)
         row, col = var
