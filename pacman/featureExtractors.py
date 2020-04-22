@@ -293,34 +293,34 @@ class NewExtractor(FeatureExtractor):
             dist = closestFood(next_pos, food, walls)
             if dist is not None:
                 features["closest-food"] = float(dist) / (walls.width * walls.height)
+            
+            if next_pos in capsuleList:
+                features["eats-capsule"] = len(dangerousGhostPositions)
 
         # count the number of ghosts 1-step away that dangerous
-        features["#-of-ghosts-1-step-away"] = sum( next_pos in Actions.getLegalNeighbors(g.getPosition(), walls) for g in ghostStates if g.scaredTimer <= 1)
+        features["#-of-ghosts-1-step-away"] = sum( next_pos in Actions.getLegalNeighbors(g, walls) for g in dangerousGhostPositions)
         
-        if not features["#-of-ghosts-1-step-away"]:
-            # if there is no danger of ghosts then add the food feature
-            if food[next_x][next_y]:
-                features["eats-food"] = 1.0
-            
+        if not features["#-of-ghosts-1-step-away"]:            
             nearestScaredGhostDist, nearestScaredGhost = self.nearestEdibleScaredGhost(next_pos, state, walls)
             if nearestScaredGhost is not None:
-                ghostDistFromRespawn = self.nearestPosition(nearestScaredGhost.start.getPosition(), (next_pos, ), walls)
-                pacmanDistFromRespawn = self.nearestPosition(nearestScaredGhost.start.getPosition(), (nearestScaredGhost.getPosition(), ), walls)
+                pacmanDistFromRespawn = self.nearestPosition(nearestScaredGhost.start.getPosition(), (next_pos, ), walls)
+                ghostDistFromRespawn = self.nearestPosition(nearestScaredGhost.start.getPosition(), (nearestScaredGhost.getPosition(), ), walls)
                 # if pacman or scared ghost are not near respawn location
-                if ghostDistFromRespawn > 1 or pacmanDistFromRespawn > 1:
+                if (ghostDistFromRespawn > 0 or pacmanDistFromRespawn > 0) and (ghostDistFromRespawn > 1 or pacmanDistFromRespawn > 1):
                     features["closest-scared-ghost"] = 1.0 - float(nearestScaredGhostDist) / (walls.width * walls.height)
                     if next_pos in safeGhostPositions:
                         features["eats-ghost"] = 1.0
             
+            # if there is no danger of ghosts then add the food feature
+            if food[next_x][next_y] and nearestScaredGhost is None:
+                features["eats-food"] = 1.0
+            
             nearestCapsuleDist = self.nearestPosition(next_pos, capsuleList, walls)
             if nearestCapsuleDist is not None:
                 features["closest-capsule"] = 1.0 - float(nearestCapsuleDist) / (walls.width * walls.height)
-            
-            if next_pos in capsuleList:
-                features["eats-capsule"] = len(dangerousGhostPositions)
         '''
         safePathScore = self.analyseSafePaths(state.getPacmanPosition(), next_pos, dangerousGhostPositions, walls)
-        features["safe-path-score"] = safePathScore
+        features["safe-path-score"] = g.getPosition() in Actions.getLegalNeighbors(next_pos, walls) for g in ghostStates if 
         '''
         features.divideAll(10.0)
         return features
