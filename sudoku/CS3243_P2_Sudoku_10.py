@@ -27,7 +27,7 @@ class Sudoku(object):
                     self.domains[(i,j)] = [current_val]
                     self.filled_tiles.append((i,j))
     
-    def solve(self, isInitial=True):
+    def solve(self, isInitial=True, emptyIndex=0):
         if isInitial:
             # Pre processing using initial_inf
             intial_inf_time = time.time()
@@ -35,9 +35,9 @@ class Sudoku(object):
             print("Time taken for pre-processing: "+ str(time.time() - intial_inf_time))
         
         self.nodes_explored += 1
-        if len(self.empty_tiles) == 0:
+        if len(self.empty_tiles) <= emptyIndex:
             return self.ans
-        chosen_tile = self.select_variable()
+        chosen_tile = self.empty_tiles[emptyIndex]
         for i in self.domains[chosen_tile]:
             # save reference to old domain_vals for chosen tile
             old_domain_vals = self.domains[chosen_tile]
@@ -46,14 +46,12 @@ class Sudoku(object):
             
             removed_domain_values, inference_status = self.inf(chosen_tile)
             if (inference_status != self.FAILURE):
-                if self.solve(isInitial=False):
+                if self.solve(isInitial=False, emptyIndex=emptyIndex + 1):
                     return self.ans
             # If we reach here means we have reached an error and we must backtrack
             self.restore_domain_vals(removed_domain_values)
             self.ans[chosen_tile[0]][chosen_tile[1]] = 0
             self.domains[chosen_tile] = old_domain_vals
-        # We have tried out all possible values and none of them work, so restore this tile as empty and exit
-        self.empty_tiles.append(chosen_tile)
         return False
 
     def restore_domain_vals(self, removed_domain_values):
@@ -156,45 +154,6 @@ class Sudoku(object):
             if len(current_domains) == 1:
                 self.filled_tiles.append(tile)
 
-    def select_variable(self):
-        # return self.select_most_constrained_variable()
-        return self.empty_tiles.pop(-1)
-
-    # Using this heuristic for choosing the variable currently slows down solving time
-    # An alternative way of maintaining the most constrained variable might be faster
-    def select_most_constrained_variable(self):
-        var_index = -1
-        most_constrained_dom_size = 10 # just an arbitary number larger than the possible domain size. This means that it will eventually be updated
-        for i in range(len(self.empty_tiles)):
-            empty_tile = self.empty_tiles[i]
-            new_dom_size = len(self.domains[empty_tile]) 
-            if new_dom_size < most_constrained_dom_size:
-                var_index = i
-                most_constrained_dom_size = new_dom_size
-        return self.empty_tiles.pop(var_index)
-
-    # NOT USED AS WE OUR PREPROCESSING STEP AND INFERENCE STEPS GUARANTEE ARC CONSISTENCY
-    def assignment_is_consistent(self, var, value):
-        # Need to perform 3 * 8 = 24 checks (within row, col and 3x3 square)
-        row, col = var
-        square_top_left_row = (row // 3) * 3
-        square_top_left_col = (col // 3) * 3
-        # Row check
-        for i in range(9):
-            if i != col and self.ans[row][i] == value:
-                return False
-
-        # Col check
-        for i in range(9):
-            if i != row and self.ans[i][col] == value:
-                return False
-
-        # 3x3 square check
-        for i in range(square_top_left_row, square_top_left_row + 3):
-            for j in range(square_top_left_col, square_top_left_col + 3):
-                if (i, j) != var and self.ans[i][j] == value:
-                    return False
-        return True
     # you may add more classes/functions if you think is useful
     # However, ensure all the classes/functions are in this file ONLY
     # Note that our evaluation scripts only call the solve method.
