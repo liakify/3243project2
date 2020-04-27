@@ -301,10 +301,16 @@ class NewExtractor(FeatureExtractor):
             if next_pos in capsuleList:
                 features["eats-capsule"] = len(dangerousGhostPositions)
 
+        # count number of safe paths
+        if len(Actions.getLegalNeighbors(next_pos, walls)) <= 3:
+            numSafeRoutes = self.analyseSafePaths(next_pos, dangerousGhostPositions, walls)
+            if numSafeRoutes == 0:
+                features["trapped"] = 1.0
+
         # count the number of ghosts 1-step away that dangerous
         features["#-of-ghosts-1-step-away"] = sum( next_pos in Actions.getLegalNeighbors(g, walls) for g in dangerousGhostPositions)
         
-        if not features["#-of-ghosts-1-step-away"]:            
+        if not features["#-of-ghosts-1-step-away"]:
             nearestScaredGhostDist, nearestScaredGhost = self.nearestEdibleScaredGhost(next_pos, state, walls)
             if nearestScaredGhost is not None:
                 pacmanDistFromRespawn = self.nearestPosition(nearestScaredGhost.start.getPosition(), (next_pos, ), walls)
@@ -316,17 +322,12 @@ class NewExtractor(FeatureExtractor):
                         features["eats-ghost"] = 1.0
             
             # if there is no danger of ghosts then add the food feature
-            if food[next_x][next_y] and nearestScaredGhost is None:
+            if food[next_x][next_y] and nearestScaredGhost is None and "trapped" not in features:
                 features["eats-food"] = 1.0
             
             nearestCapsuleDist = self.nearestPosition(next_pos, capsuleList, walls)
             if nearestCapsuleDist is not None:
                 features["closest-capsule"] = 1.0 - float(nearestCapsuleDist) / (walls.width * walls.height)
-        
-        if len(Actions.getLegalNeighbors(next_pos, walls)) <= 3:
-            numSafeRoutes = self.analyseSafePaths(next_pos, dangerousGhostPositions, walls)
-            if numSafeRoutes == 0:
-                features["trapped"] = 1.0
         
         features.divideAll(10.0)
         return features
