@@ -5,237 +5,154 @@ import time
 # Running script: given code can be run with the command:
 # python file.py, ./path/to/init_state.txt ./output/output.txt
 
-start_time = time.time()
+# initial_inf = 0
 
 class Sudoku(object):
     FAILURE = -1
-    def __init__(self, puzzle, domain_values=None):
+    def __init__(self, puzzle):
         # you may add more attributes if you need
         self.puzzle = puzzle # self.puzzle is a list of lists
-        self.ans = puzzle # self.ans is a list of lists
-        self.domain_values = domain_values if domain_values != None else []
-        if domain_values == None:
-            for i in range(9):
-                self.domain_values.append([])
-                for j in range(9):
-                    if puzzle[i][j] == 0:
-                        self.domain_values[i].append(range(1, 10))
-                    else:
-                        self.domain_values[i].append([puzzle[i][j]])
-
-    def get_unassigned(self):
-        return [(i,j) for i in range(9) for j in range(9) if self.puzzle[i][j] == 0]
-
-    def solve(self, flag=True):
-        if flag:
-            inf = self.inference(None)
-           
-            if inf != self.FAILURE:
-                new_sudoku = Sudoku(inf[0], domain_values=inf[1])
-                result = new_sudoku.solve(flag=False)
-                         
-                if result != self.FAILURE:
-                    return result
-
-        unassigned = self.get_unassigned()
-        if len(unassigned) == 0:
+        self.ans = copy.deepcopy(puzzle) # self.ans is a list of lists
+        self.domains = {}
+        self.empty_tiles = []
+        self.filled_tiles = []
+        self.nodes_explored = 0
+        for i in range(9):
+            for j in range(9):
+                current_val = self.ans[i][j]
+                if current_val == 0:
+                    self.domains[(i,j)] = range(1, 10)
+                    self.empty_tiles.append((i,j))
+                else:
+                    self.domains[(i,j)] = [current_val]
+                    self.filled_tiles.append((i,j))
+    
+    def solve(self, isInitial=True, emptyIndex=0):
+        if isInitial:
+            # Pre processing using initial_inf
+            intial_inf_time = time.time()
+            self.initial_inf()
+            print("Time taken for pre-processing: "+ str(time.time() - intial_inf_time))
+        
+        self.nodes_explored += 1
+        if len(self.empty_tiles) <= emptyIndex:
             return self.ans
-        # First area we can vary algorithm
-        var = self.select_unassigned_variable(unassigned)
-        var_row, var_col = var
-        # Second area we can vary algorithm
-        ordered_domain_vals = self.get_and_order_domain_vals(var)
-        for val in ordered_domain_vals:                
-            self.ans[var_row][var_col] = val
-            self.domain_values[var_row][var_col] = [val]
-            inf = self.inference(var)
-            if inf != self.FAILURE:
-                new_sudoku = Sudoku(inf[0], domain_values=inf[1])
-                result = new_sudoku.solve(False)
-
-                if result != self.FAILURE:
-                    return result
+        chosen_tile = self.empty_tiles[emptyIndex]
+        for i in self.domains[chosen_tile]:
+            # save reference to old domain_vals for chosen tile
+            old_domain_vals = self.domains[chosen_tile]
+            self.domains[chosen_tile] = [i]
+            self.ans[chosen_tile[0]][chosen_tile[1]] = i
             
-            # If we reach here we need to undo the assignment
-            self.ans[var_row][var_col] = 0
-            self.domain_values[var_row][var_col] = ordered_domain_vals
-
-        # self.ans is a list of lists
-        return self.FAILURE
-
-    # We would not need to perform this if AC-3 is used at every step during inference and as preprocessing
-    def assignment_is_consistent(self, var, value):
-        # Need to perform 3 * 8 = 24 checks (within row, col and 3x3 square)
-        row, col = var
-        square_top_left_row = (row // 3) * 3
-        square_top_left_col = (col // 3) * 3
-        # Row check
-        for i in range(9):
-            if i == col:
-                continue
-            dom_values = self.domain_values[row][i]
-            # print(dom_values)
-            if len(dom_values) == 1 and dom_values[0] == value:
-                return False
-
-        # Col check
-        for i in range(9):
-            if i == row:
-                continue
-            dom_values = self.domain_values[i][col]
-            if len(dom_values) == 1 and dom_values[0] == value:
-                return False
-
-        # 3x3 square check
-        for i in range(square_top_left_row, square_top_left_row + 3):
-            for j in range(square_top_left_col, square_top_left_col + 3):
-                if (i, j) == (row, col):
-                    continue
-                dom_values = self.domain_values[i][j]
-                if len(dom_values) == 1 and dom_values[0] == value:
-                    return False
-        return True
-    
-    def inference(self, cell):
-        # Do inference here such as AC-3
-        # Will need to make a deep copy of the domain values while doing inference
-        # so that we do not lose the information of the domain values of the
-        # other nodes. if we discover a variable for which we have an empty
-        # domain, we return FAILURE. Otherwise we can either return the original
-        # domains or the reduced domains
-        
-        domain_vals = copy.deepcopy(self.domain_values) 
-        
-        if cell == None:
-            queue = self.get_arcs()
-        else:
-            row, col = cell
-            queue = set()
-      
-            for x in self.get_neighbours(row, col, True):
-                queue.add((x, cell))
-        
-        while len(queue) != 0:
-            (Xi, Xj) = queue.pop()
-            row_i, col_i = Xi
-
-            if (self.revise(domain_vals, Xi, Xj)):
-                if (len(domain_vals[row_i][col_i]) == 0):
-                    return self.FAILURE
-                
-                for Xk in self.get_neighbours(row_i, col_i, False):
-                    if Xk != Xj:                    
-                        queue.add((Xk, Xi))
-        
-        return (self.ans, domain_vals)
-    
-    # Get all the arcs in the CSP used when AC-3 done at pre-processing
-    def get_arcs(self):
-        arcs = set()
-
-        for row in range(9):
-            for col in range(9):
-                 for (x, y) in self.get_neighbours(row, col, False):
-                      arcs.add(((row, col), (x, y)))
-    
-        return arcs    
-
-    # Get all neighbours of a particular cell in the CSP
-    def get_neighbours(self, row, col, signal):
-        square_top_row = (row // 3) * 3
-        square_left_most_col = (col // 3) * 3
-        result = []        
-
-        # Get neighbours in the same row
-        for i in range(9):
-            if i != col and (not signal or (signal and self.ans[row][i] == 0)):
-                 result.append((row, i))
-
-        # Get neighbours in the same col
-        for j in range(9):
-            if j != row and (not signal or (signal and self.ans[j][col] == 0)):
-                result.append((j, col))
-
-        # Get neighbours in the same 3x3 grid
-        for i in range(square_top_row, square_top_row + 3):
-            for j in range(square_left_most_col, square_left_most_col + 3):
-                if (row, col) != (i, j) and (not signal or (signal and self.ans[i][j] == 0)):
-                    result.append((i, j))
-        
-        return result
- 
-    # Revise function
-    def revise(self, domain_vals, Xi, Xj):
-        row, col = Xi
-        revised = False
-
-        for x in domain_vals[row][col]:
-            if not self.found_valid_value(domain_vals, x, Xj):
-                 domain_vals[row][col].remove(x)
-                 revised = True
-        
-        return revised
-
-    # Find a valid value in Xj if x was assigned to Xi
-    def found_valid_value(self, domain_vals, x, Xj):
-        row, col = Xj
-
-        for j in domain_vals[row][col]:
-            if j != x:
-                return True
-        
+            removed_domain_values, inference_status = self.inf(chosen_tile)
+            if (inference_status != self.FAILURE):
+                if self.solve(isInitial=False, emptyIndex=emptyIndex + 1):
+                    return self.ans
+            # If we reach here means we have reached an error and we must backtrack
+            self.restore_domain_vals(removed_domain_values)
+            self.ans[chosen_tile[0]][chosen_tile[1]] = 0
+            self.domains[chosen_tile] = old_domain_vals
         return False
 
-########## VARIANTS FOR CHOOSING UNASSIGNED VAR ###############
+    def restore_domain_vals(self, removed_domain_values):
+        # For when we reach an error state, we need to restore all the removed domain values
+        for (tile, domain_val) in removed_domain_values:
+            self.domains[tile].append(domain_val)
+                        
+    def initial_reduce_domain(self, tile, filled_tile, value):
+        current_domains = self.domains[tile]
+        # in the preprocessing inference step we dont need to check if a tile reaches an inconsistent state
+        # (i,e having a tile of domain length 1 reducing to domain length 0). This is because as long as the
+        # initial puzzle is guaranteed to be solvable, we will not change the puzzle into an inconsistent state
+        # during pre-processing as we are only making inferences and not any guesses, which is only done later.
+        # This is just an optimization
+        if tile != filled_tile and len(current_domains) != 1 and value in current_domains:
+            current_domains.remove(value)
+            # If the domain of a tile is reduced to only one possible value, assign that value to the tile
+            if len(current_domains) == 1:
+                # We can safely assign  the single value in the domain as the answer for the same reason as above
+                self.ans[tile[0]][tile[1]] = current_domains[0]
+                self.filled_tiles.append(tile)
 
-    # We can choose a heuristic here for selecting an unassigned variable
-    def select_unassigned_variable(self, unassigned):
-        # For now just choose first variable
-        return unassigned[0]
+    def initial_inf(self):
+        # The intuition here is that we only need to check arc consistency for any neighbours to filled tiles
+        # and only once for each filled tile. As we infer new filled tiles (i.e. tiles that have their domains
+        # reduced to one during the preprocessing domain reduction step), we only need to check the arc consistency
+        # with the neighbours of the newly filled_tiles. This is essentially a version of AC-3 optimized for sudoku
+        # as we are not performing redundant checks. Even though we append to filled tiles in the initial_reduce_domain
+        # fn, it is guaranteed to terminate as a tile can only change from unfilled to filled state and not vice versa
+        # in preprocessing
+        for filled_tile in self.filled_tiles:
+            row, col = filled_tile
+            value = self.ans[row][col]
+            square_top_left_row = (row // 3) * 3
+            square_top_left_col = (col // 3) * 3
+            
+            # Reduce the domains of tiles in the same row as the filled tile
+            for i in range(9):
+                current = (row, i)
+                self.initial_reduce_domain(current, filled_tile, value)
+                
+            # Reduce the domains of tiles in the same col as the filled tile
+            for i in range(9):
+                current = (i, col)
+                self.initial_reduce_domain(current, filled_tile, value)
+            
+            # Reduce the domains of tiles in the same square as the filled tile
+            for i in range(square_top_left_row, square_top_left_row + 3):
+                for j in range(square_top_left_col, square_top_left_col + 3):
+                    current = (i, j)
+                    self.initial_reduce_domain(current, filled_tile, value)
     
-    def select_most_constrained_variable(self, unassigned):
-        if len(unassigned) == 0:
-            return unassigned
-        var = unassigned[0]
-        most_constrained_dom_size = 10 # just an arbitary number larger than the possible domain size. This means that it will eventually be updated
-        for (x, y) in unassigned:
-            new_dom_size = len(self.domain_values[x][y]) 
-            if new_dom_size < most_constrained_dom_size:
-                var = (x, y)
-                most_constrained_dom_size = new_dom_size
-        return var
+    def inf(self, tile):
+        # Intution is very similar to initial_inf. Similar to AC-3, we only need to initially infer
+        # using the newly guessed tile at this step of backtracking. Subsequently we check using tiles
+        # that had their domains reduced to 1 in the reduce_domain step. Unlike the preprocessing step
+        # there is a possibility of reducing a domain to zero here. If that happens, we throw a failure.
+        # One additional thing we need to do is store a list of all the removed domains and the tile
+        # coordinate as well in the removed_domains list so we can restore the removed domains if we 
+        # ever reach an error state here on in one of the descendant states.
+        self.filled_tiles = [tile]
+        removed_domains = []
+        for filled_tile in self.filled_tiles:
+            row, col = filled_tile
+            value = self.domains[filled_tile][0]
+            square_top_left_row = (row // 3) * 3
+            square_top_left_col = (col // 3) * 3
+            
+            # Reduce the domains of tiles in the same row as tile just filled
+            for i in range(9):
+                current = (row, i)
+                result = self.reduce_domain(current, filled_tile, value, removed_domains)
+                if len(self.domains[current]) == 0:
+                    return removed_domains, self.FAILURE
+
+            # Reduce the domains of tiles in the same col as tile just filled
+            for i in range(9):
+                current = (i, col)
+                result = self.reduce_domain(current, filled_tile, value, removed_domains)
+                if len(self.domains[current]) == 0:
+                    return removed_domains, self.FAILURE
+            
+            # Reduce the domains of tiles in the same wquare as tile just filled
+            for i in range(square_top_left_row, square_top_left_row + 3):
+                for j in range(square_top_left_col, square_top_left_col + 3):
+                    current = (i, j)
+                    result = self.reduce_domain(current, filled_tile, value, removed_domains)
+                    if len(self.domains[current]) == 0:
+                        return removed_domains, self.FAILURE
+        
+        return removed_domains, None
     
-    def select_most_constraining_variable(self, unassigned):
-        if len(unassigned) == 0:
-            return unassigned
-        var = unassigned[0]
-        constraint_size = -1
-        for (x, y) in unassigned:
-            new_constraint_size = len(self.get_neighbours(x, y, True))
-            if new_constraint_size > constraint_size:
-                var = (x, y)
-                constraint_size = new_constraint_size
-        return var
-
-########## VARIANTS FOR ORDERING DOMAINS VALS ###############
-
-    def get_and_order_domain_vals(self, var):
-        domain_values = self.domain_values[var[0]][var[1]]
-        # We can add more stuff here for ordering the values
-        return domain_values # Currently no ordering
-
-    def order_by_least_constraining_val(self, var):
-        row, col = var
-        domain_values = self.domain_values[row][col]
-        val_constraint_map = {}
-        for val in domain_values:
-            num_constraints = 0
-            for (x, y) in self.get_neighbours(row, col, False):
-                if val in self.domain_values[x][y]:
-                    num_constraints += 1
-            val_constraint_map[val] = num_constraints
-        return sorted(domain_values, key=lambda val: val_constraint_map[val])
-
+    def reduce_domain(self, tile, filled_tile, value, removed_domains):
+        current_domains = self.domains[tile]
+        if tile != filled_tile and value in current_domains:
+            current_domains.remove(value)
+            removed_domains.append((tile, value))
+            # If domain of tile is reduced to only one value, we will need to infer using this tile as well
+            # so we add it to the list of filled tiles so we can check it in the infer function
+            if len(current_domains) == 1:
+                self.filled_tiles.append(tile)
 
     # you may add more classes/functions if you think is useful
     # However, ensure all the classes/functions are in this file ONLY
@@ -266,13 +183,15 @@ if __name__ == "__main__":
                 if j == 9:
                     i += 1
                     j = 0
+    start_time = time.time()
 
     sudoku = Sudoku(puzzle)
     ans = sudoku.solve()
     
-    print(time.time() - start_time)
+    print("Total time taken: " + str(time.time() - start_time))
+    print("Nodes explored: "+ str(sudoku.nodes_explored))
 
-    #print(ans)
+    # print(ans)
     with open(sys.argv[2], 'a') as f:
          for i in range(9):
              for j in range(9):
