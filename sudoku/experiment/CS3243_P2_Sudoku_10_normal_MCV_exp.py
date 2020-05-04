@@ -5,9 +5,10 @@ import time
 # Running script: given code can be run with the command:
 # python file.py, ./path/to/init_state.txt ./output/output.txt
 
+# initial_inf = 0
+
 class Sudoku(object):
     FAILURE = -1
-
     def __init__(self, puzzle):
         # you may add more attributes if you need
         self.puzzle = puzzle # self.puzzle is a list of lists
@@ -15,12 +16,12 @@ class Sudoku(object):
         self.domains = {}
         self.empty_tiles = []
         self.filled_tiles = []
-
+        
         # for experiment
         self.nodes_explored = 0
         self.preprocessing_time = 0
         self.time_taken = 0
-
+        
         for i in range(9):
             for j in range(9):
                 current_val = self.ans[i][j]
@@ -43,13 +44,14 @@ class Sudoku(object):
         if len(self.empty_tiles) <= emptyIndex:
             self.time_taken = time.time() - start_time
             return self.ans
-        
+        self.reposition_most_constrained_variable(emptyIndex)
         chosen_tile = self.empty_tiles[emptyIndex]
         for i in self.domains[chosen_tile]:
             # save reference to old domain_vals for chosen tile
             old_domain_vals = self.domains[chosen_tile]
             self.domains[chosen_tile] = [i]
             self.ans[chosen_tile[0]][chosen_tile[1]] = i
+            
             removed_domain_values, inference_status = self.inf(chosen_tile)
             if (inference_status != self.FAILURE):
                 if self.solve(isInitial=False, emptyIndex=emptyIndex + 1):
@@ -161,6 +163,20 @@ class Sudoku(object):
             if len(current_domains) == 1:
                 self.filled_tiles.append(tile)
 
+    # Select the most constrained variable and positions it at emptyIndex
+    def reposition_most_constrained_variable(self, emptyIndex):
+        var_index = emptyIndex
+        most_constrained_dom_size = 10
+        for i in range(var_index, len(self.empty_tiles)):
+            new_dom_size = len(self.domains[self.empty_tiles[i]]) 
+            if new_dom_size < most_constrained_dom_size:
+                var_index = i
+                most_constrained_dom_size = new_dom_size
+        # Do in place swap with chosen tile coords and that of emptyIndex
+        temp = self.empty_tiles[var_index]
+        self.empty_tiles[var_index] = self.empty_tiles[emptyIndex]
+        self.empty_tiles[emptyIndex] = temp
+
     def get_statistics(self):
         return {'nodes': self.nodes_explored, 'time taken': self.time_taken, 'pre-process': self.preprocessing_time}
 
@@ -193,10 +209,15 @@ if __name__ == "__main__":
                 if j == 9:
                     i += 1
                     j = 0
+    start_time = time.time()
 
     sudoku = Sudoku(puzzle)
     ans = sudoku.solve()
+    
+    print("Total time taken: " + str(time.time() - start_time))
+    print("Nodes explored: "+ str(sudoku.nodes_explored))
 
+    # print(ans)
     with open(sys.argv[2], 'a') as f:
          for i in range(9):
              for j in range(9):

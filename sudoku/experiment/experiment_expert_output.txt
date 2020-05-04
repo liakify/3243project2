@@ -1,70 +1,135 @@
 Input 1:
-Heuristic number 1
-Average time taken: 0.00200009346008
-Average preprocessing time: 0.0
+Normal
+Average time taken (in s): 0.00200009346008
+Average preprocessing time (in s): 0.0
 Average nodes explored: 54
-Heuristic number 2
-Average time taken: 0.0160000324249
-Average preprocessing time: 0.00800013542175
+---------------------------------------------------------
+Normal + MCV
+Average time taken (in s): 0.00300002098083
+Average preprocessing time (in s): 0.0
+Average nodes explored: 58
+---------------------------------------------------------
+Normal + MCV + LCV
+Average time taken (in s): 0.00300002098083
+Average preprocessing time (in s): 0.000999927520752
 Average nodes explored: 54
-Heuristic number 3
-Average time taken: 0.0169999599457
-Average preprocessing time: 0.00999999046326
+---------------------------------------------------------
+AC3 only
+Average time taken (in s): 0.00799989700317
+Average preprocessing time (in s): 0.0090000629425
 Average nodes explored: 54
+---------------------------------------------------------
+AC3 + MCV
+Average time taken (in s): 0.0120000839233
+Average preprocessing time (in s): 0.010999917984
+Average nodes explored: 58
+---------------------------------------------------------
 
 Input 2:
-Heuristic number 1
-Average time taken: 0.00799989700317
-Average preprocessing time: 0.00100016593933
+Normal
+Average time taken (in s): 0.00999999046326
+Average preprocessing time (in s): 0.00100016593933
 Average nodes explored: 137
-Heuristic number 2
-Average time taken: 0.0840001106262
-Average preprocessing time: 0.00799989700317
-Average nodes explored: 138
-Heuristic number 3
-Average time taken: 0.0429999828339
-Average preprocessing time: 0.00800013542175
-Average nodes explored: 96
+---------------------------------------------------------
+Normal + MCV
+Average time taken (in s): 0.00399994850159
+Average preprocessing time (in s): 0.000999927520752
+Average nodes explored: 54
+---------------------------------------------------------
+Normal + MCV + LCV
+Average time taken (in s): 0.00300002098083
+Average preprocessing time (in s): 0.000999927520752
+Average nodes explored: 54
+---------------------------------------------------------
+AC3 only
+Average time taken (in s): 0.0599999427795
+Average preprocessing time (in s): 0.00600004196167
+Average nodes explored: 139
+---------------------------------------------------------
+AC3 + MCV
+Average time taken (in s): 0.00600004196167
+Average preprocessing time (in s): 0.0090000629425
+Average nodes explored: 54
+---------------------------------------------------------
 
 Input 3:
-Heuristic number 1
-Average time taken: 0.0
-Average preprocessing time: 0.000999927520752
+Normal
+Average time taken (in s): 0.00200009346008
+Average preprocessing time (in s): 0.00200009346008
 Average nodes explored: 55
-Heuristic number 2
-Average time taken: 0.0139999389648
-Average preprocessing time: 0.010999917984
+---------------------------------------------------------
+Normal + MCV
+Average time taken (in s): 0.00300002098083
+Average preprocessing time (in s): 0.00200009346008
 Average nodes explored: 55
-Heuristic number 3
-Average time taken: 0.0160000324249
-Average preprocessing time: 0.00999999046326
+---------------------------------------------------------
+Normal + MCV + LCV
+Average time taken (in s): 0.00200009346008
+Average preprocessing time (in s): 0.00200009346008
 Average nodes explored: 55
+---------------------------------------------------------
+AC3 only
+Average time taken (in s): 0.00300002098083
+Average preprocessing time (in s): 0.0160000324249
+Average nodes explored: 55
+---------------------------------------------------------
+AC3 + MCV
+Average time taken (in s): 0.00300002098083
+Average preprocessing time (in s): 0.00999999046326
+Average nodes explored: 55
+---------------------------------------------------------
 
 Input 4:
-Heuristic number 1
-Average time taken: 0.00799989700317
-Average preprocessing time: 0.00100016593933
+Normal
+Average time taken (in s): 0.00599980354309
+Average preprocessing time (in s): 0.0
 Average nodes explored: 73
-Heuristic number 2
-Average time taken: 0.0539999008179
-Average preprocessing time: 0.0090000629425
-Average nodes explored: 87
-Heuristic number 3
-Average time taken: 0.0319998264313
-Average preprocessing time: 0.00800013542175
-Average nodes explored: 80
+---------------------------------------------------------
+Normal + MCV
+Average time taken (in s): 0.00799989700317
+Average preprocessing time (in s): 0.000999927520752
+Average nodes explored: 86
+---------------------------------------------------------
+Normal + MCV + LCV
+Average time taken (in s): 0.00599980354309
+Average preprocessing time (in s): 0.00100016593933
+Average nodes explored: 74
+---------------------------------------------------------
+AC3 only
+Average time taken (in s): 0.0250000953674
+Average preprocessing time (in s): 0.0090000629425
+Average nodes explored: 73
+---------------------------------------------------------
+AC3 + MCV
+Average time taken (in s): 0.0360000133514
+Average preprocessing time (in s): 0.00499987602234
+Average nodes explored: 86
+---------------------------------------------------------
 
 Input 5:
-Heuristic number 1
-Average time taken: 0.00200009346008
-Average preprocessing time: 0.000999927520752
+Normal
+Average time taken (in s): 0.00200009346008
+Average preprocessing time (in s): 0.000999927520752
 Average nodes explored: 54
-Heuristic number 2
-Average time taken: 0.048999786377
-Average preprocessing time: 0.00800013542175
+---------------------------------------------------------
+Normal + MCV
+Average time taken (in s): 0.00300002098083
+Average preprocessing time (in s): 0.000999927520752
 Average nodes explored: 54
-Heuristic number 3
-Average time taken: 0.0889999866486
-Average preprocessing time: 0.0230000019073
+---------------------------------------------------------
+Normal + MCV + LCV
+Average time taken (in s): 0.00500011444092
+Average preprocessing time (in s): 0.0
 Average nodes explored: 54
+---------------------------------------------------------
+AC3 only
+Average time taken (in s): 0.010999917984
+Average preprocessing time (in s): 0.010999917984
+Average nodes explored: 54
+---------------------------------------------------------
+AC3 + MCV
+Average time taken (in s): 0.00299978256226
+Average preprocessing time (in s): 0.00800013542175
+Average nodes explored: 54
+---------------------------------------------------------
 

@@ -2,9 +2,11 @@ import sys
 import os
 import subprocess
 import time
-from CS3243_P2_Sudoku_10_exp import Sudoku as FirstSudoku
-from CS3243_P2_Sudoku_10_AC3_only_exp import Sudoku as SecondSudoku
-from CS3243_P2_Sudoku_10_AC3_MCV_exp import Sudoku as ThirdSudoku
+from CS3243_P2_Sudoku_10_normal_exp import Sudoku as FirstSudoku
+from CS3243_P2_Sudoku_10_normal_MCV_exp import Sudoku as SecondSudoku
+from CS3243_P2_Sudoku_10_normal_MCV_LCV_exp import Sudoku as ThirdSudoku
+from CS3243_P2_Sudoku_10_AC3_only_exp import Sudoku as ForthSudoku
+from CS3243_P2_Sudoku_10_AC3_MCV_exp import Sudoku as FifthSudoku
 
 
 def read_puzzle(file_path):
@@ -46,8 +48,12 @@ def run_and_generate_stats(puzzle_num, puzzle, heuristic_num, num_of_iterations,
             sudoku = FirstSudoku(puzzle)
         elif heuristic_num == 2:
             sudoku = SecondSudoku(puzzle)
-        else:
+        elif heuristic_num == 3:
             sudoku = ThirdSudoku(puzzle)
+        elif heuristic_num == 4:
+            sudoku = ForthSudoku(puzzle)
+        else:
+            sudoku = FifthSudoku(puzzle)
         ans = sudoku.solve()
         write_solution(puzzle_num, ans, heuristic_num, difficulty)
         stats = sudoku.get_statistics()
@@ -69,6 +75,18 @@ def pick_difficulty(num):
     else:
         return 'evil'
 
+def get_heuristic_name(num):
+    if num == 1:
+        return 'Normal'
+    elif num == 2:
+        return 'Normal + MCV'
+    elif num == 3:
+        return 'Normal + MCV + LCV'
+    elif num == 4:
+        return 'AC3 only'
+    else:
+        return 'AC3 + MCV'
+
 for k in range(1, 5):
     difficulty = pick_difficulty(k)
 
@@ -83,13 +101,14 @@ for k in range(1, 5):
         num_of_iterations = int(sys.argv[1])
         puzzle = read_puzzle(puzzle_file_path)
         f.write("Input {}:\n".format(i))
-        for j in range (1, 4):
-            print('Currently running heuristic {j} on {difficulty} puzzle {i}'.format(difficulty = difficulty, j = j, i = i))
+        for j in range (1, 6):
+            print('Currently running {j} on {difficulty} puzzle {i}'.format(difficulty = difficulty, j = get_heuristic_name(j), i = i))
             time_taken, preprocessing_time, nodes_explored = run_and_generate_stats(i, puzzle, j, num_of_iterations, difficulty)
-            f.write("Heuristic number {}\n".format(j))
-            f.write("Average time taken: {}\n".format(average(time_taken)))
-            f.write("Average preprocessing time: {}\n".format(average(preprocessing_time)))
+            f.write("{}\n".format(get_heuristic_name(j)))
+            f.write("Average time taken (in s): {}\n".format(average(time_taken)))
+            f.write("Average preprocessing time (in s): {}\n".format(average(preprocessing_time)))
             f.write("Average nodes explored: {}\n".format(average(nodes_explored)))
+            f.write("---------------------------------------------------------\n")
         f.write("\n")
         print("")
     f.close()
