@@ -12,14 +12,14 @@ class Sudoku(object):
         self.puzzle = puzzle # self.puzzle is a list of lists
         self.ans = copy.deepcopy(puzzle) # self.ans is a list of lists
         self.domains = {}
-        self.empty = []
+        self.empty_tiles = []
         self.nodes_explored = 0
         for i in range(9):
             for j in range(9):
                 current_val = self.ans[i][j]
                 if current_val == 0:
                     self.domains[(i,j)] = range(1, 10)
-                    self.empty.append((i,j))
+                    self.empty_tiles.append((i,j))
                 else:
                     self.domains[(i,j)] = [current_val]
     def solve(self, isInitial=True, emptyIndex=0):
@@ -28,9 +28,9 @@ class Sudoku(object):
             self.initial_inf()
             print("Time taken for pre-processing: "+ str(time.time() - intial_inf_time))
         self.nodes_explored += 1
-        if len(self.empty) <= emptyIndex:
+        if len(self.empty_tiles) <= emptyIndex:
             return self.ans
-        empty_tile = self.empty[emptyIndex]
+        empty_tile = self.empty_tiles[emptyIndex]
         for i in self.domains[empty_tile]:
             # if self.assignment_is_consistent(empty_tile, i):
             self.ans[empty_tile[0]][empty_tile[1]] = i
@@ -103,7 +103,7 @@ class Sudoku(object):
 
     def initial_inf(self):
         queue = set()
-        for empty_tile in self.empty:
+        for empty_tile in self.empty_tiles:
             self.get_all_neighbour_arcs_from(queue, empty_tile)
         # print(queue)
         while len(queue) != 0:
