@@ -1,0 +1,70 @@
+Input 1:
+Heuristic number 1
+Average time taken: 20.4900000095
+Average preprocessing time: 0.00200009346008
+Average nodes explored: 177341
+Heuristic number 2
+Average time taken: 170.06099987
+Average preprocessing time: 0.0120000839233
+Average nodes explored: 173741
+Heuristic number 3
+Average time taken: 29.1599998474
+Average preprocessing time: 0.0140001773834
+Average nodes explored: 37614
+
+Input 2:
+Heuristic number 1
+Average time taken: 0.066999912262
+Average preprocessing time: 0.0
+Average nodes explored: 1160
+Heuristic number 2
+Average time taken: 0.926000118256
+Average preprocessing time: 0.0090000629425
+Average nodes explored: 1215
+Heuristic number 3
+Average time taken: 0.112999916077
+Average preprocessing time: 0.018000125885
+Average nodes explored: 131
+
+Input 3:
+Heuristic number 1
+Average time taken: 0.0769999027252
+Average preprocessing time: 0.0
+Average nodes explored: 1225
+Heuristic number 2
+Average time taken: 0.371999979019
+Average preprocessing time: 0.00899982452393
+Average nodes explored: 467
+Heuristic number 3
+Average time taken: 0.633000135422
+Average preprocessing time: 0.00999999046326
+Average nodes explored: 905
+
+Input 4:
+Heuristic number 1
+Average time taken: 3.76200008392
+Average preprocessing time: 0.0
+Average nodes explored: 52462
+Heuristic number 2
+Average time taken: 31.0480000973
+Average preprocessing time: 0.0090000629425
+Average nodes explored: 42125
+Heuristic number 3
+Average time taken: 21.5329999924
+Average preprocessing time: 0.00999999046326
+Average nodes explored: 32602
+
+Input 5:
+Heuristic number 1
+Average time taken: 2.51800012589
+Average preprocessing time: 0.0
+Average nodes explored: 30854
+Heuristic number 2
+Average time taken: 25.6779999733
+Average preprocessing time: 0.0220000743866
+Average nodes explored: 30271
+Heuristic number 3
+Average time taken: 0.348000049591
+Average preprocessing time: 0.00800013542175
+Average nodes explored: 537
+
