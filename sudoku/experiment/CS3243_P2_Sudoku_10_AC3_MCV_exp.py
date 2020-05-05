@@ -29,13 +29,13 @@ class Sudoku(object):
                     self.domains[(i,j)] = [current_val]
 
     def solve(self, isInitial=True, emptyIndex=0):
+        start_time = time.time()
         if isInitial:
             initial_inf_time = time.time()
             self.initial_inf()
             self.preprocessing_time = time.time() - initial_inf_time
 
         self.nodes_explored += 1
-        start_time = time.time()
         if len(self.empty) <= emptyIndex:
             self.time_taken = time.time() - start_time
             return self.ans

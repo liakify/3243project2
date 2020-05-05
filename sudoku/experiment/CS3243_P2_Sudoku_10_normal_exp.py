@@ -33,6 +33,7 @@ class Sudoku(object):
                     self.filled_tiles.append((i,j))
     
     def solve(self, isInitial=True, emptyIndex=0):
+        start_time = time.time()
         if isInitial:
             # Pre processing using initial_inf
             initial_inf_time = time.time()
@@ -40,7 +41,6 @@ class Sudoku(object):
             self.preprocessing_time = time.time() - initial_inf_time
         
         self.nodes_explored += 1
-        start_time = time.time()
         if len(self.empty_tiles) <= emptyIndex:
             self.time_taken = time.time() - start_time
             return self.ans
