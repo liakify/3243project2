@@ -12,25 +12,34 @@ class Sudoku(object):
         self.puzzle = puzzle # self.puzzle is a list of lists
         self.ans = copy.deepcopy(puzzle) # self.ans is a list of lists
         self.domains = {}
-        self.empty_tiles = []
+        self.empty = []
+
+        # for experiment
         self.nodes_explored = 0
+        self.preprocessing_time = 0
+        self.time_taken = 0
+
         for i in range(9):
             for j in range(9):
                 current_val = self.ans[i][j]
                 if current_val == 0:
                     self.domains[(i,j)] = range(1, 10)
-                    self.empty_tiles.append((i,j))
+                    self.empty.append((i,j))
                 else:
                     self.domains[(i,j)] = [current_val]
+                    
     def solve(self, isInitial=True, emptyIndex=0):
+        start_time = time.time()
         if isInitial:
-            intial_inf_time = time.time()
+            initial_inf_time = time.time()
             self.initial_inf()
-            print("Time taken for pre-processing: "+ str(time.time() - intial_inf_time))
+            self.preprocessing_time = time.time() - initial_inf_time
+           
         self.nodes_explored += 1
-        if len(self.empty_tiles) <= emptyIndex:
+        if len(self.empty) <= emptyIndex:
+            self.time_taken = time.time() - start_time
             return self.ans
-        empty_tile = self.empty_tiles[emptyIndex]
+        empty_tile = self.empty[emptyIndex]
         for i in self.domains[empty_tile]:
             # if self.assignment_is_consistent(empty_tile, i):
             self.ans[empty_tile[0]][empty_tile[1]] = i
@@ -39,6 +48,7 @@ class Sudoku(object):
             inferred = self.inf(empty_tile)
             if (inferred[1] != self.FAILURE):
                 if self.solve(isInitial=False, emptyIndex=emptyIndex + 1):
+                    self.time_taken = time.time() - start_time
                     return self.ans
             self.restore_domain_vals(inferred[0])
             self.ans[empty_tile[0]][empty_tile[1]] = 0
@@ -103,7 +113,7 @@ class Sudoku(object):
 
     def initial_inf(self):
         queue = set()
-        for empty_tile in self.empty_tiles:
+        for empty_tile in self.empty:
             self.get_all_neighbour_arcs_from(queue, empty_tile)
         # print(queue)
         while len(queue) != 0:
@@ -149,6 +159,9 @@ class Sudoku(object):
                 if (i, j) != var and self.ans[i][j] == value:
                     return False
         return True
+
+    def get_statistics(self):
+        return {'nodes': self.nodes_explored, 'time taken': self.time_taken, 'pre-process': self.preprocessing_time}
     
     # you may add more classes/functions if you think is useful
     # However, ensure all the classes/functions are in this file ONLY
