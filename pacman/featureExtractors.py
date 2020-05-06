@@ -112,6 +112,10 @@ class NewExtractor(FeatureExtractor):
         ghostPositions = state.getGhostPositions()
         ghostStates = state.getGhostStates()
 
+        safeGhostPositions = list((g.getPosition() for g in ghostStates if g.scaredTimer > 0))
+        if len(safeGhostPositions) == 0:
+            return (None, None)
+
         initialEvaluation = self.closestGhostEval(pacmanPos, ghostPositions, 0)
 
         # Format of tuple: (f(n), g(n), position)
@@ -146,6 +150,8 @@ class NewExtractor(FeatureExtractor):
         return (None, None)
 
     def nearestPosition(self, start, targets, walls):
+        if len(targets) == 0:
+            return None
         fringe = [(start[0], start[1], 0)]
         expanded = set()
         while fringe:
@@ -173,48 +179,14 @@ class NewExtractor(FeatureExtractor):
     def closestGhostEval(self, pacmanPos, safeGhostPositions, currentCost):
         return self.closestGhostMD(pacmanPos, safeGhostPositions) + currentCost
 
-    def generateNeighbours(self, pos, walls, steps):
-        fringe = [(pos, 0)]
-        expanded = set()
-
-        while fringe:
-            pos, dist = fringe.pop()
-            if pos in expanded:
-                continue
-            expanded.add(pos)
-
-
-
-    def numOfGhostInTwoUnits(self, pacmanPos, dangerousGhostPositions, walls):
-        fringe = [(pacmanPos, 0)]
-        ghostPossibleNextPos = []
-        for ghostPos in dangerousGhostPositions:
-            ghostPossibleNextPos += Actions.getLegalNeighbors(ghostPos, walls)
-
-        expanded = set()
-        count = 0
-
-        while fringe:
-            pos, dist = fringe.pop(0)
-            if pos in expanded:
-                continue
-            expanded.add(pos)
-            # if we find a food at this location then exit
-            if pos in ghostPossibleNextPos:
-                count += 1
-            # otherwise spread out from the location to its neighbours
-            if dist < 2:
-                nbrs = Actions.getLegalNeighbors(pos, walls)
-                for new_pos in nbrs:
-                    fringe.append((new_pos, dist + 1))
-        # no food found
-        return count
-
-    def analyseSafePaths(self, pacmanPos, dangerousGhostPositions, walls, blockedPos=None):
+    def analyseSafePaths(self, pacmanPos, dangerousGhostPositions, walls):
+        if len(dangerousGhostPositions) == 0:
+            return 2
+        
         pacmanFringeCount = 1
         numOfSafeRoutes = 0
-        distOfSafeRoutes = 0
         fringe = []
+        
         for ghost in dangerousGhostPositions:
             fringe.append((ghost, 0, 'ghost'))
 
@@ -234,8 +206,6 @@ class NewExtractor(FeatureExtractor):
 
         fringe.append((pacmanPos, 0, 'pacman'))
         expanded = set()
-        if blockedPos is not None:
-            expanded.add(blockedPos)
 
         while pacmanFringeCount > 0:
             pos, dist, identity = fringe.pop(0)
@@ -249,7 +219,6 @@ class NewExtractor(FeatureExtractor):
                 if len(nextPositions) != 1:
                     if len(nextPositions) > 1:
                         numOfSafeRoutes += 1
-                        distOfSafeRoutes += dist
                     continue
                 else:
                     pacmanFringeCount += 1
@@ -284,11 +253,6 @@ class NewExtractor(FeatureExtractor):
         dx, dy = Actions.directionToVector(action)
         next_x, next_y = int(x + dx), int(y + dy)
         next_pos = (next_x, next_y)
-
-        '''
-        if next_pos == state.getPacmanPosition():
-            features["not-moving"] = 1.0
-        '''
         
         # check if next_pos has dangerous ghost
         if next_pos in dangerousGhostPositions:
