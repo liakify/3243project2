@@ -253,17 +253,14 @@ class NewExtractor(FeatureExtractor):
         dx, dy = Actions.directionToVector(action)
         next_x, next_y = int(x + dx), int(y + dy)
         next_pos = (next_x, next_y)
-        
+
+        dist = closestFood(next_pos, food, walls)
+        if dist is not None:
+            features["closest-food"] = float(dist) / (walls.width * walls.height)
+
         # check if next_pos has dangerous ghost
         if next_pos in dangerousGhostPositions:
             features["ghosts-in-next-pos"] = 1.0
-        else:
-            dist = closestFood(next_pos, food, walls)
-            if dist is not None:
-                features["closest-food"] = float(dist) / (walls.width * walls.height)
-            
-            if next_pos in capsuleList:
-                features["eats-capsule"] = len(dangerousGhostPositions)
 
         # count number of safe paths
         if len(Actions.getLegalNeighbors(next_pos, walls)) <= 3:
@@ -286,7 +283,7 @@ class NewExtractor(FeatureExtractor):
                         features["eats-ghost"] = 1.0
             
             # if there is no danger of ghosts then add the food feature
-            if food[next_x][next_y] and nearestScaredGhost is None and "trapped" not in features:
+            if food[next_x][next_y] and nearestScaredGhost is None:
                 features["eats-food"] = 1.0
             
             nearestCapsuleDist = self.nearestPosition(next_pos, capsuleList, walls)
